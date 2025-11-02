@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CartItem, Product } from '@/types/Product';
 
@@ -36,17 +36,15 @@ const CART_STORAGE_KEY = '@gtm_cart';
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
 
-  // Load cart from storage on mount
-  useEffect(() => {
-    loadCart();
-  }, []);
-
-  // Save cart to storage whenever it changes
-  useEffect(() => {
-    saveCart();
+  const saveCart = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    } catch (error) {
+      console.error('Error saving cart:', error);
+    }
   }, [cart]);
 
-  const loadCart = async () => {
+  const loadCart = useCallback(async () => {
     try {
       const cartData = await AsyncStorage.getItem(CART_STORAGE_KEY);
       if (cartData) {
@@ -56,15 +54,19 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error('Error loading cart:', error);
     }
-  };
+  }, []);
 
-  const saveCart = async () => {
-    try {
-      await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-    } catch (error) {
-      console.error('Error saving cart:', error);
+  // Load cart from storage on mount
+  useEffect(() => {
+    loadCart();
+  }, [loadCart]);
+
+  // Save cart to storage whenever it changes
+  useEffect(() => {
+    if (cart.length > 0) {
+      saveCart();
     }
-  };
+  }, [cart, saveCart]);
 
   const addToCart = (product: Product, quantity: number = 1) => {
     setCart((prevCart) => {

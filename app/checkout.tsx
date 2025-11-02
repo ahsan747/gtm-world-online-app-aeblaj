@@ -52,7 +52,7 @@ export default function CheckoutScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
   const subtotal = getCartTotal();
   const shipping = subtotal > 50 ? 0 : 5.99;

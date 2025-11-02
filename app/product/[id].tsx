@@ -24,6 +24,74 @@ import * as Haptics from "expo-haptics";
 
 const { width } = Dimensions.get("window");
 
+// Related Product Card Component
+const RelatedProductCard = ({ relatedProduct, index, colors, router }: any) => {
+  const animValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(animValue, {
+      toValue: 1,
+      friction: 8,
+      tension: 40,
+      delay: index * 100,
+      useNativeDriver: true,
+    }).start();
+  }, [animValue, index]);
+
+  return (
+    <Animated.View
+      style={{
+        opacity: animValue,
+        transform: [
+          {
+            scale: animValue.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.8, 1],
+            }),
+          },
+        ],
+      }}
+    >
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.push(`/product/${relatedProduct.id}`);
+        }}
+        style={({ pressed }) => [
+          styles.relatedProductCard,
+          {
+            backgroundColor: colors.card,
+            opacity: pressed ? 0.9 : 1,
+          },
+        ]}
+      >
+        <Image
+          source={{ uri: relatedProduct.image }}
+          style={styles.relatedProductImage}
+        />
+        <View style={styles.relatedProductInfo}>
+          <Text style={[styles.relatedProductName, { color: colors.text }]} numberOfLines={2}>
+            {relatedProduct.name}
+          </Text>
+          <View style={styles.relatedProductFooter}>
+            <Text style={[styles.relatedProductPrice, { color: colors.primary }]}>
+              ${relatedProduct.price.toFixed(2)}
+            </Text>
+            {relatedProduct.rating && (
+              <View style={styles.relatedProductRating}>
+                <IconSymbol name="star.fill" size={12} color="#FFD700" />
+                <Text style={[styles.relatedProductRatingText, { color: colors.text }]}>
+                  {relatedProduct.rating}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+};
+
 export default function ProductDetailScreen() {
   const { colors } = useTheme();
   const { id } = useLocalSearchParams();
@@ -54,7 +122,7 @@ export default function ProductDetailScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, scaleAnim, slideAnim]);
 
   const product = products.find((p) => p.id === id);
 
@@ -109,74 +177,6 @@ export default function ProductDetailScreen() {
           onPress: () => router.push("/(tabs)/cart"),
         },
       ]
-    );
-  };
-
-  const renderRelatedProduct = (relatedProduct: typeof products[0], index: number) => {
-    const animValue = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-      Animated.spring(animValue, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        delay: index * 100,
-        useNativeDriver: true,
-      }).start();
-    }, []);
-
-    return (
-      <Animated.View
-        key={relatedProduct.id}
-        style={{
-          opacity: animValue,
-          transform: [
-            {
-              scale: animValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.8, 1],
-              }),
-            },
-          ],
-        }}
-      >
-        <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push(`/product/${relatedProduct.id}`);
-          }}
-          style={({ pressed }) => [
-            styles.relatedProductCard,
-            {
-              backgroundColor: colors.card,
-              opacity: pressed ? 0.9 : 1,
-            },
-          ]}
-        >
-          <Image
-            source={{ uri: relatedProduct.image }}
-            style={styles.relatedProductImage}
-          />
-          <View style={styles.relatedProductInfo}>
-            <Text style={[styles.relatedProductName, { color: colors.text }]} numberOfLines={2}>
-              {relatedProduct.name}
-            </Text>
-            <View style={styles.relatedProductFooter}>
-              <Text style={[styles.relatedProductPrice, { color: colors.primary }]}>
-                ${relatedProduct.price.toFixed(2)}
-              </Text>
-              {relatedProduct.rating && (
-                <View style={styles.relatedProductRating}>
-                  <IconSymbol name="star.fill" size={12} color="#FFD700" />
-                  <Text style={[styles.relatedProductRatingText, { color: colors.text }]}>
-                    {relatedProduct.rating}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </Pressable>
-      </Animated.View>
     );
   };
 
@@ -374,7 +374,15 @@ export default function ProductDetailScreen() {
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.relatedProductsContainer}
                 >
-                  {relatedProducts.map((product, index) => renderRelatedProduct(product, index))}
+                  {relatedProducts.map((product, index) => (
+                    <RelatedProductCard
+                      key={product.id}
+                      relatedProduct={product}
+                      index={index}
+                      colors={colors}
+                      router={router}
+                    />
+                  ))}
                 </ScrollView>
               </View>
             </>

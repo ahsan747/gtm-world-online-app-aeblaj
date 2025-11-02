@@ -21,6 +21,106 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import * as Haptics from "expo-haptics";
 
+// Cart Item Component
+const CartItemCard = ({ item, index, onRemove, onUpdateQuantity, colors }: any) => {
+  const itemAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(itemAnim, {
+      toValue: 1,
+      friction: 8,
+      tension: 40,
+      delay: index * 80,
+      useNativeDriver: true,
+    }).start();
+  }, [index, itemAnim]);
+
+  return (
+    <Animated.View
+      style={{
+        opacity: itemAnim,
+        transform: [
+          {
+            translateX: itemAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [-50, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      <View
+        style={[styles.cartItem, { backgroundColor: colors.card }]}
+      >
+        <Image source={{ uri: item.product.image }} style={styles.itemImage} />
+        
+        <View style={styles.itemDetails}>
+          <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={2}>
+            {item.product.name}
+          </Text>
+          <Text style={[styles.itemPrice, { color: colors.primary }]}>
+            ${item.product.price.toFixed(2)}
+          </Text>
+          
+          <View style={styles.quantityContainer}>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onUpdateQuantity(item.product.id, item.quantity - 1);
+              }}
+              style={({ pressed }) => [
+                styles.quantityButton,
+                { 
+                  backgroundColor: colors.border,
+                  opacity: pressed ? 0.7 : 1,
+                  transform: [{ scale: pressed ? 0.9 : 1 }],
+                },
+              ]}
+            >
+              <IconSymbol name="minus" size={16} color={colors.text} />
+            </Pressable>
+            
+            <Text style={[styles.quantityText, { color: colors.text }]}>
+              {item.quantity}
+            </Text>
+            
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onUpdateQuantity(item.product.id, item.quantity + 1);
+              }}
+              style={({ pressed }) => [
+                styles.quantityButton,
+                { 
+                  backgroundColor: colors.primary,
+                  opacity: pressed ? 0.7 : 1,
+                  transform: [{ scale: pressed ? 0.9 : 1 }],
+                },
+              ]}
+            >
+              <IconSymbol name="plus" size={16} color="#FFFFFF" />
+            </Pressable>
+          </View>
+          
+          <Text style={[styles.itemTotal, { color: colors.text + "CC" }]}>
+            Total: ${(item.product.price * item.quantity).toFixed(2)}
+          </Text>
+        </View>
+        
+        <Pressable
+          onPress={() => onRemove(item.product.id, item.product.name)}
+          style={({ pressed }) => [
+            styles.removeButton,
+            { opacity: pressed ? 0.7 : 1 },
+          ]}
+        >
+          <IconSymbol name="trash" size={20} color="#FF3B30" />
+        </Pressable>
+      </View>
+    </Animated.View>
+  );
+};
+
 export default function CartScreen() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -43,7 +143,7 @@ export default function CartScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
   const handleCheckout = () => {
     if (cart.length === 0) {
@@ -116,106 +216,6 @@ export default function CartScreen() {
           },
         },
       ]
-    );
-  };
-
-  const renderCartItem = (item: typeof cart[0], index: number) => {
-    const itemAnim = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-      Animated.spring(itemAnim, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        delay: index * 80,
-        useNativeDriver: true,
-      }).start();
-    }, []);
-
-    return (
-      <Animated.View
-        key={item.product.id}
-        style={{
-          opacity: itemAnim,
-          transform: [
-            {
-              translateX: itemAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [-50, 0],
-              }),
-            },
-          ],
-        }}
-      >
-        <View
-          style={[styles.cartItem, { backgroundColor: colors.card }]}
-        >
-          <Image source={{ uri: item.product.image }} style={styles.itemImage} />
-          
-          <View style={styles.itemDetails}>
-            <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={2}>
-              {item.product.name}
-            </Text>
-            <Text style={[styles.itemPrice, { color: colors.primary }]}>
-              ${item.product.price.toFixed(2)}
-            </Text>
-            
-            <View style={styles.quantityContainer}>
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  updateQuantity(item.product.id, item.quantity - 1);
-                }}
-                style={({ pressed }) => [
-                  styles.quantityButton,
-                  { 
-                    backgroundColor: colors.border,
-                    opacity: pressed ? 0.7 : 1,
-                    transform: [{ scale: pressed ? 0.9 : 1 }],
-                  },
-                ]}
-              >
-                <IconSymbol name="minus" size={16} color={colors.text} />
-              </Pressable>
-              
-              <Text style={[styles.quantityText, { color: colors.text }]}>
-                {item.quantity}
-              </Text>
-              
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  updateQuantity(item.product.id, item.quantity + 1);
-                }}
-                style={({ pressed }) => [
-                  styles.quantityButton,
-                  { 
-                    backgroundColor: colors.primary,
-                    opacity: pressed ? 0.7 : 1,
-                    transform: [{ scale: pressed ? 0.9 : 1 }],
-                  },
-                ]}
-              >
-                <IconSymbol name="plus" size={16} color="#FFFFFF" />
-              </Pressable>
-            </View>
-            
-            <Text style={[styles.itemTotal, { color: colors.text + "CC" }]}>
-              Total: ${(item.product.price * item.quantity).toFixed(2)}
-            </Text>
-          </View>
-          
-          <Pressable
-            onPress={() => handleRemoveItem(item.product.id, item.product.name)}
-            style={({ pressed }) => [
-              styles.removeButton,
-              { opacity: pressed ? 0.7 : 1 },
-            ]}
-          >
-            <IconSymbol name="trash" size={20} color="#FF3B30" />
-          </Pressable>
-        </View>
-      </Animated.View>
     );
   };
 
@@ -300,7 +300,16 @@ export default function CartScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.itemsContainer}>
-              {cart.map(renderCartItem)}
+              {cart.map((item, index) => (
+                <CartItemCard
+                  key={item.product.id}
+                  item={item}
+                  index={index}
+                  onRemove={handleRemoveItem}
+                  onUpdateQuantity={updateQuantity}
+                  colors={colors}
+                />
+              ))}
             </View>
 
             <Animated.View 

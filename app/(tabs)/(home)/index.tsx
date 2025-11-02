@@ -22,6 +22,185 @@ import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import * as Haptics from "expo-haptics";
 
+// Category Item Component
+const CategoryItem = ({ category, index, selectedCategory, onSelect, colors }: any) => {
+  const isSelected = selectedCategory === category.id;
+  const animValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(animValue, {
+      toValue: 1,
+      duration: 300,
+      delay: index * 50,
+      useNativeDriver: true,
+    }).start();
+  }, [animValue, index]);
+
+  return (
+    <Animated.View
+      style={{
+        opacity: animValue,
+        transform: [
+          {
+            translateX: animValue.interpolate({
+              inputRange: [0, 1],
+              outputRange: [50, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onSelect(category.id);
+        }}
+        style={({ pressed }) => [
+          styles.categoryItem,
+          {
+            backgroundColor: isSelected ? colors.primary : colors.card,
+            opacity: pressed ? 0.7 : 1,
+            transform: [{ scale: pressed ? 0.95 : 1 }],
+          },
+        ]}
+      >
+        <IconSymbol
+          name={category.icon as any}
+          size={20}
+          color={isSelected ? "#FFFFFF" : colors.text}
+        />
+        <Text
+          style={[
+            styles.categoryText,
+            { color: isSelected ? "#FFFFFF" : colors.text },
+          ]}
+        >
+          {category.name}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+};
+
+// Product Card Component
+const ProductCard = ({ product, index, onAddToCart, colors, router }: any) => {
+  const animValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(animValue, {
+      toValue: 1,
+      friction: 8,
+      tension: 40,
+      delay: index * 50,
+      useNativeDriver: true,
+    }).start();
+  }, [animValue, index]);
+
+  return (
+    <Animated.View
+      style={{
+        opacity: animValue,
+        transform: [
+          {
+            scale: animValue.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.8, 1],
+            }),
+          },
+        ],
+      }}
+    >
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.push(`/product/${product.id}`);
+        }}
+        style={({ pressed }) => [
+          styles.productCard,
+          {
+            backgroundColor: colors.card,
+            opacity: pressed ? 0.9 : 1,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+          },
+        ]}
+      >
+        <View style={styles.productImageContainer}>
+          <Image source={{ uri: product.image }} style={styles.productImage} />
+          {!product.inStock && (
+            <View style={styles.outOfStockBadge}>
+              <Text style={styles.outOfStockText}>Out of Stock</Text>
+            </View>
+          )}
+          {product.rating && product.rating >= 4.8 && (
+            <View style={styles.bestSellerBadge}>
+              <IconSymbol name="star.fill" size={12} color="#FFD700" />
+              <Text style={styles.bestSellerText}>Best Seller</Text>
+            </View>
+          )}
+        </View>
+        
+        <View style={styles.productInfo}>
+          <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>
+            {product.name}
+          </Text>
+          <Text style={[styles.productDescription, { color: colors.text + "80" }]} numberOfLines={2}>
+            {product.description}
+          </Text>
+          
+          {product.rating && (
+            <View style={styles.ratingContainer}>
+              <IconSymbol name="star.fill" size={14} color="#FFD700" />
+              <Text style={[styles.ratingText, { color: colors.text }]}>
+                {product.rating}
+              </Text>
+              <Text style={[styles.reviewsText, { color: colors.text + "60" }]}>
+                ({product.reviews})
+              </Text>
+            </View>
+          )}
+          
+          <View style={styles.productFooter}>
+            <View>
+              <Text style={[styles.productPrice, { color: colors.primary }]}>
+                ${product.price.toFixed(2)}
+              </Text>
+              {product.price > 50 && (
+                <Text style={[styles.freeShippingText, { color: "#34C759" }]}>
+                  Free Shipping
+                </Text>
+              )}
+            </View>
+            
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                if (product.inStock) {
+                  onAddToCart(product);
+                }
+              }}
+              disabled={!product.inStock}
+              style={({ pressed }) => [
+                styles.addButton,
+                {
+                  backgroundColor: product.inStock ? colors.primary : colors.border,
+                  opacity: pressed ? 0.7 : 1,
+                  transform: [{ scale: pressed ? 0.9 : 1 }],
+                },
+              ]}
+            >
+              <IconSymbol
+                name={product.inStock ? "plus" : "xmark"}
+                size={18}
+                color="#FFFFFF"
+              />
+            </Pressable>
+          </View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+};
+
 export default function HomeScreen() {
   const { user } = useAuth();
   const { colors } = useTheme();
@@ -55,7 +234,7 @@ export default function HomeScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, scaleAnim, slideAnim]);
 
   const filteredProducts = products.filter((product) => {
     const matchesCategory =
@@ -165,185 +344,6 @@ export default function HomeScreen() {
     </Animated.View>
   );
 
-  const renderCategory = (category: typeof categories[0], index: number) => {
-    const isSelected = selectedCategory === category.id;
-    const animValue = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-      Animated.timing(animValue, {
-        toValue: 1,
-        duration: 300,
-        delay: index * 50,
-        useNativeDriver: true,
-      }).start();
-    }, []);
-
-    return (
-      <Animated.View
-        key={category.id}
-        style={{
-          opacity: animValue,
-          transform: [
-            {
-              translateX: animValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [50, 0],
-              }),
-            },
-          ],
-        }}
-      >
-        <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setSelectedCategory(category.id);
-          }}
-          style={({ pressed }) => [
-            styles.categoryItem,
-            {
-              backgroundColor: isSelected ? colors.primary : colors.card,
-              opacity: pressed ? 0.7 : 1,
-              transform: [{ scale: pressed ? 0.95 : 1 }],
-            },
-          ]}
-        >
-          <IconSymbol
-            name={category.icon as any}
-            size={20}
-            color={isSelected ? "#FFFFFF" : colors.text}
-          />
-          <Text
-            style={[
-              styles.categoryText,
-              { color: isSelected ? "#FFFFFF" : colors.text },
-            ]}
-          >
-            {category.name}
-          </Text>
-        </Pressable>
-      </Animated.View>
-    );
-  };
-
-  const renderProduct = (product: Product, index: number) => {
-    const animValue = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-      Animated.spring(animValue, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        delay: index * 50,
-        useNativeDriver: true,
-      }).start();
-    }, []);
-
-    return (
-      <Animated.View
-        key={product.id}
-        style={{
-          opacity: animValue,
-          transform: [
-            {
-              scale: animValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.8, 1],
-              }),
-            },
-          ],
-        }}
-      >
-        <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push(`/product/${product.id}`);
-          }}
-          style={({ pressed }) => [
-            styles.productCard,
-            {
-              backgroundColor: colors.card,
-              opacity: pressed ? 0.9 : 1,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
-            },
-          ]}
-        >
-          <View style={styles.productImageContainer}>
-            <Image source={{ uri: product.image }} style={styles.productImage} />
-            {!product.inStock && (
-              <View style={styles.outOfStockBadge}>
-                <Text style={styles.outOfStockText}>Out of Stock</Text>
-              </View>
-            )}
-            {product.rating && product.rating >= 4.8 && (
-              <View style={styles.bestSellerBadge}>
-                <IconSymbol name="star.fill" size={12} color="#FFD700" />
-                <Text style={styles.bestSellerText}>Best Seller</Text>
-              </View>
-            )}
-          </View>
-          
-          <View style={styles.productInfo}>
-            <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>
-              {product.name}
-            </Text>
-            <Text style={[styles.productDescription, { color: colors.text + "80" }]} numberOfLines={2}>
-              {product.description}
-            </Text>
-            
-            {product.rating && (
-              <View style={styles.ratingContainer}>
-                <IconSymbol name="star.fill" size={14} color="#FFD700" />
-                <Text style={[styles.ratingText, { color: colors.text }]}>
-                  {product.rating}
-                </Text>
-                <Text style={[styles.reviewsText, { color: colors.text + "60" }]}>
-                  ({product.reviews})
-                </Text>
-              </View>
-            )}
-            
-            <View style={styles.productFooter}>
-              <View>
-                <Text style={[styles.productPrice, { color: colors.primary }]}>
-                  ${product.price.toFixed(2)}
-                </Text>
-                {product.price > 50 && (
-                  <Text style={[styles.freeShippingText, { color: "#34C759" }]}>
-                    Free Shipping
-                  </Text>
-                )}
-              </View>
-              
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
-                  if (product.inStock) {
-                    handleAddToCart(product);
-                  }
-                }}
-                disabled={!product.inStock}
-                style={({ pressed }) => [
-                  styles.addButton,
-                  {
-                    backgroundColor: product.inStock ? colors.primary : colors.border,
-                    opacity: pressed ? 0.7 : 1,
-                    transform: [{ scale: pressed ? 0.9 : 1 }],
-                  },
-                ]}
-              >
-                <IconSymbol
-                  name={product.inStock ? "plus" : "xmark"}
-                  size={18}
-                  color="#FFFFFF"
-                />
-              </Pressable>
-            </View>
-          </View>
-        </Pressable>
-      </Animated.View>
-    );
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
@@ -378,7 +378,16 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoriesContainer}
           >
-            {categories.map((category, index) => renderCategory(category, index))}
+            {categories.map((category, index) => (
+              <CategoryItem
+                key={category.id}
+                category={category}
+                index={index}
+                selectedCategory={selectedCategory}
+                onSelect={setSelectedCategory}
+                colors={colors}
+              />
+            ))}
           </ScrollView>
         </View>
 
@@ -393,7 +402,16 @@ export default function HomeScreen() {
           </View>
           
           <View style={styles.productsGrid}>
-            {filteredProducts.map((product, index) => renderProduct(product, index))}
+            {filteredProducts.map((product, index) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                index={index}
+                onAddToCart={handleAddToCart}
+                colors={colors}
+                router={router}
+              />
+            ))}
           </View>
         </View>
 
