@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Platform } from 'react-native';
 import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
@@ -11,7 +12,13 @@ export default function TabLayout() {
       name: '(home)',
       route: '/(tabs)/(home)/',
       icon: 'house.fill',
-      label: 'Home',
+      label: 'Shop',
+    },
+    {
+      name: 'cart',
+      route: '/(tabs)/cart',
+      icon: 'cart.fill',
+      label: 'Cart',
     },
     {
       name: 'profile',
@@ -27,7 +34,11 @@ export default function TabLayout() {
       <NativeTabs>
         <NativeTabs.Trigger name="(home)">
           <Icon sf="house.fill" drawable="ic_home" />
-          <Label>Home</Label>
+          <Label>Shop</Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="cart">
+          <Icon sf="cart.fill" drawable="ic_cart" />
+          <Label>Cart</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="profile">
           <Icon sf="person.fill" drawable="ic_profile" />
@@ -47,6 +58,7 @@ export default function TabLayout() {
         }}
       >
         <Stack.Screen name="(home)" />
+        <Stack.Screen name="cart" />
         <Stack.Screen name="profile" />
       </Stack>
       <FloatingTabBar tabs={tabs} />
