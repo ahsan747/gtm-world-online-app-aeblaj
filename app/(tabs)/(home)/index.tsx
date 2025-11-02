@@ -1,14 +1,20 @@
+
 import React from "react";
-import { Stack, Link } from "expo-router";
+import { Stack, Link, useRouter } from "expo-router";
 import { FlatList, Pressable, StyleSheet, View, Text, Alert, Platform } from "react-native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { GlassView } from "expo-glass-effect";
 import { useTheme } from "@react-navigation/native";
+import { useAuth } from "@/contexts/AuthContext";
+import { LinearGradient } from "expo-linear-gradient";
 
 const ICON_COLOR = "#007AFF";
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const { user } = useAuth();
+  const router = useRouter();
+
   const modalDemos = [
     {
       title: "Standard Modal",
@@ -76,12 +82,84 @@ export default function HomeScreen() {
     </Pressable>
   );
 
+  const renderWelcomeCard = () => {
+    if (user) {
+      return (
+        <GlassView style={[
+          styles.welcomeCard,
+          Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
+        ]} glassEffectStyle="regular">
+          <LinearGradient
+            colors={['#FF6B9D', '#C44569']}
+            style={styles.welcomeIcon}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <IconSymbol name="sparkles" size={32} color="#FFFFFF" />
+          </LinearGradient>
+          <Text style={[styles.welcomeTitle, { color: theme.colors.text }]}>
+            Welcome back, {user.displayName || 'User'}!
+          </Text>
+          <Text style={[styles.welcomeSubtitle, { color: theme.dark ? '#98989D' : '#666' }]}>
+            Explore GTM World Online
+          </Text>
+        </GlassView>
+      );
+    }
+
+    return (
+      <GlassView style={[
+        styles.welcomeCard,
+        Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
+      ]} glassEffectStyle="regular">
+        <LinearGradient
+          colors={['#FF6B9D', '#C44569']}
+          style={styles.welcomeIcon}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <IconSymbol name="sparkles" size={32} color="#FFFFFF" />
+        </LinearGradient>
+        <Text style={[styles.welcomeTitle, { color: theme.colors.text }]}>
+          Welcome to GTM World Online
+        </Text>
+        <Text style={[styles.welcomeSubtitle, { color: theme.dark ? '#98989D' : '#666' }]}>
+          Sign in to access all features
+        </Text>
+        <View style={styles.authButtons}>
+          <Pressable
+            style={styles.authButton}
+            onPress={() => router.push('/login')}
+          >
+            <LinearGradient
+              colors={['#FF6B9D', '#C44569']}
+              style={styles.authButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Text style={styles.authButtonText}>Sign In</Text>
+            </LinearGradient>
+          </Pressable>
+          <Pressable
+            style={[styles.authButton, styles.authButtonOutline, {
+              borderColor: theme.dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+              backgroundColor: theme.dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+            }]}
+            onPress={() => router.push('/signup')}
+          >
+            <Text style={[styles.authButtonTextOutline, { color: theme.colors.text }]}>Sign Up</Text>
+          </Pressable>
+        </View>
+      </GlassView>
+    );
+  };
+
   return (
     <>
       {Platform.OS === 'ios' && (
         <Stack.Screen
           options={{
-            title: "Building the app...",
+            title: "GTM World Online",
             headerRight: renderHeaderRight,
             headerLeft: renderHeaderLeft,
           }}
@@ -92,6 +170,7 @@ export default function HomeScreen() {
           data={modalDemos}
           renderItem={renderModalDemo}
           keyExtractor={(item) => item.route}
+          ListHeaderComponent={renderWelcomeCard}
           contentContainerStyle={[
             styles.listContainer,
             Platform.OS !== 'ios' && styles.listContainerWithTabBar
@@ -107,14 +186,70 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor handled dynamically
   },
   listContainer: {
     paddingVertical: 16,
     paddingHorizontal: 16,
   },
   listContainerWithTabBar: {
-    paddingBottom: 100, // Extra padding for floating tab bar
+    paddingBottom: 100,
+  },
+  welcomeCard: {
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  welcomeIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    boxShadow: '0px 4px 12px rgba(255, 107, 157, 0.3)',
+    elevation: 8,
+  },
+  welcomeTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  welcomeSubtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  authButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  authButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  authButtonGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  authButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  authButtonOutline: {
+    borderWidth: 2,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  authButtonTextOutline: {
+    fontSize: 16,
+    fontWeight: '700',
   },
   demoCard: {
     borderRadius: 12,
@@ -138,12 +273,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 4,
-    // color handled dynamically
   },
   demoDescription: {
     fontSize: 14,
     lineHeight: 18,
-    // color handled dynamically
   },
   headerButtonContainer: {
     padding: 6,
@@ -156,6 +289,5 @@ const styles = StyleSheet.create({
   tryButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    // color handled dynamically
   },
 });
