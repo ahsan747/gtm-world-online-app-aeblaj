@@ -13,11 +13,12 @@ import {
   TextInput,
   Alert,
   KeyboardAvoidingView,
+  Animated,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import * as Haptics from "expo-haptics";
 
@@ -34,6 +35,24 @@ export default function CheckoutScreen() {
   const [country, setCountry] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const router = useRouter();
+  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const subtotal = getCartTotal();
   const shipping = subtotal > 50 ? 0 : 5.99;
@@ -73,6 +92,30 @@ export default function CheckoutScreen() {
     }, 2000);
   };
 
+  const renderInput = (
+    label: string,
+    value: string,
+    onChangeText: (text: string) => void,
+    placeholder: string,
+    keyboardType: any = "default",
+    autoCapitalize: any = "words"
+  ) => (
+    <View style={styles.inputGroup}>
+      <Text style={[styles.label, { color: colors.text }]}>
+        {label} *
+      </Text>
+      <TextInput
+        style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+        placeholder={placeholder}
+        placeholderTextColor={colors.text + "60"}
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+      />
+    </View>
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
       <Stack.Screen
@@ -110,73 +153,77 @@ export default function CheckoutScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.section, { backgroundColor: colors.card }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Contact Information
-            </Text>
+          <Animated.View 
+            style={[
+              styles.progressBar,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <View style={styles.progressStep}>
+              <View style={[styles.progressCircle, { backgroundColor: colors.primary }]}>
+                <IconSymbol name="cart" size={16} color="#FFFFFF" />
+              </View>
+              <Text style={[styles.progressText, { color: colors.text }]}>Cart</Text>
+            </View>
+            <View style={[styles.progressLine, { backgroundColor: colors.primary }]} />
+            <View style={styles.progressStep}>
+              <View style={[styles.progressCircle, { backgroundColor: colors.primary }]}>
+                <IconSymbol name="doc.text" size={16} color="#FFFFFF" />
+              </View>
+              <Text style={[styles.progressText, { color: colors.text }]}>Details</Text>
+            </View>
+            <View style={[styles.progressLine, { backgroundColor: colors.border }]} />
+            <View style={styles.progressStep}>
+              <View style={[styles.progressCircle, { backgroundColor: colors.border }]}>
+                <IconSymbol name="checkmark" size={16} color={colors.text} />
+              </View>
+              <Text style={[styles.progressText, { color: colors.text + "80" }]}>Complete</Text>
+            </View>
+          </Animated.View>
+
+          <Animated.View 
+            style={[
+              styles.section, 
+              { 
+                backgroundColor: colors.card,
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              }
+            ]}
+          >
+            <View style={styles.sectionHeader}>
+              <IconSymbol name="person.circle" size={24} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Contact Information
+              </Text>
+            </View>
             
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>
-                Full Name *
-              </Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
-                placeholder="John Doe"
-                placeholderTextColor={colors.text + "60"}
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-              />
-            </View>
+            {renderInput("Full Name", name, setName, "John Doe")}
+            {renderInput("Email Address", email, setEmail, "john@example.com", "email-address", "none")}
+            {renderInput("Phone Number", phone, setPhone, "+1 (555) 123-4567", "phone-pad")}
+          </Animated.View>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>
-                Email Address *
+          <Animated.View 
+            style={[
+              styles.section, 
+              { 
+                backgroundColor: colors.card,
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              }
+            ]}
+          >
+            <View style={styles.sectionHeader}>
+              <IconSymbol name="location.circle" size={24} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Shipping Address
               </Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
-                placeholder="john@example.com"
-                placeholderTextColor={colors.text + "60"}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
             </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>
-                Phone Number *
-              </Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
-                placeholder="+1 (555) 123-4567"
-                placeholderTextColor={colors.text + "60"}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-            </View>
-          </View>
-
-          <View style={[styles.section, { backgroundColor: colors.card }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Shipping Address
-            </Text>
             
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>
-                Street Address *
-              </Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
-                placeholder="123 Main Street"
-                placeholderTextColor={colors.text + "60"}
-                value={address}
-                onChangeText={setAddress}
-                autoCapitalize="words"
-              />
-            </View>
+            {renderInput("Street Address", address, setAddress, "123 Main Street")}
 
             <View style={styles.row}>
               <View style={[styles.inputGroup, styles.halfWidth]}>
@@ -184,7 +231,7 @@ export default function CheckoutScreen() {
                   City *
                 </Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
+                  style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
                   placeholder="New York"
                   placeholderTextColor={colors.text + "60"}
                   value={city}
@@ -198,7 +245,7 @@ export default function CheckoutScreen() {
                   ZIP Code *
                 </Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
+                  style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
                   placeholder="10001"
                   placeholderTextColor={colors.text + "60"}
                   value={zipCode}
@@ -208,25 +255,25 @@ export default function CheckoutScreen() {
               </View>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>
-                Country *
-              </Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
-                placeholder="United States"
-                placeholderTextColor={colors.text + "60"}
-                value={country}
-                onChangeText={setCountry}
-                autoCapitalize="words"
-              />
-            </View>
-          </View>
+            {renderInput("Country", country, setCountry, "United States")}
+          </Animated.View>
 
-          <View style={[styles.section, { backgroundColor: colors.card }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Order Summary
-            </Text>
+          <Animated.View 
+            style={[
+              styles.section, 
+              { 
+                backgroundColor: colors.card,
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              }
+            ]}
+          >
+            <View style={styles.sectionHeader}>
+              <IconSymbol name="doc.text" size={24} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Order Summary
+              </Text>
+            </View>
             
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryLabel, { color: colors.text }]}>
@@ -238,11 +285,18 @@ export default function CheckoutScreen() {
             </View>
             
             <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: colors.text }]}>
-                Shipping
-              </Text>
+              <View style={styles.shippingLabelContainer}>
+                <Text style={[styles.summaryLabel, { color: colors.text }]}>
+                  Shipping
+                </Text>
+                {shipping === 0 && (
+                  <View style={styles.freeBadge}>
+                    <Text style={styles.freeBadgeText}>FREE</Text>
+                  </View>
+                )}
+              </View>
               <Text style={[styles.summaryValue, { color: shipping === 0 ? "#34C759" : colors.text }]}>
-                {shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}
+                {shipping === 0 ? "$0.00" : `$${shipping.toFixed(2)}`}
               </Text>
             </View>
             
@@ -265,17 +319,33 @@ export default function CheckoutScreen() {
                 ${total.toFixed(2)}
               </Text>
             </View>
-          </View>
+          </Animated.View>
 
-          <View style={styles.infoBox}>
-            <IconSymbol name="info.circle" size={20} color={colors.primary} />
+          <Animated.View 
+            style={[
+              styles.infoBox,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <IconSymbol name="lock.shield" size={20} color={colors.primary} />
             <Text style={[styles.infoText, { color: colors.text }]}>
               Your order will be processed securely. You&apos;ll receive a confirmation email shortly.
             </Text>
-          </View>
+          </Animated.View>
         </ScrollView>
 
-        <View style={[styles.footer, { backgroundColor: colors.card }]}>
+        <Animated.View 
+          style={[
+            styles.footer, 
+            { 
+              backgroundColor: colors.card,
+              opacity: fadeAnim,
+            }
+          ]}
+        >
           <Pressable
             onPress={handlePlaceOrder}
             disabled={isProcessing}
@@ -284,11 +354,14 @@ export default function CheckoutScreen() {
               {
                 backgroundColor: colors.primary,
                 opacity: isProcessing ? 0.6 : pressed ? 0.8 : 1,
+                transform: [{ scale: pressed ? 0.95 : 1 }],
               },
             ]}
           >
             {isProcessing ? (
-              <Text style={styles.placeOrderText}>Processing...</Text>
+              <>
+                <Text style={styles.placeOrderText}>Processing Order...</Text>
+              </>
             ) : (
               <>
                 <IconSymbol name="checkmark.circle.fill" size={24} color="#FFFFFF" />
@@ -298,7 +371,7 @@ export default function CheckoutScreen() {
               </>
             )}
           </Pressable>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -320,27 +393,60 @@ const styles = StyleSheet.create({
   headerButton: {
     marginLeft: 16,
   },
+  progressBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  progressStep: {
+    alignItems: "center",
+    gap: 8,
+  },
+  progressCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  progressLine: {
+    width: 40,
+    height: 2,
+    marginHorizontal: 8,
+  },
   section: {
     marginHorizontal: 16,
     marginTop: 16,
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 20,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 2,
+        elevation: 4,
       },
     }),
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 16,
   },
   inputGroup: {
     marginBottom: 16,
@@ -352,11 +458,10 @@ const styles = StyleSheet.create({
   },
   input: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "rgba(0, 0, 0, 0.1)",
   },
   row: {
     flexDirection: "row",
@@ -373,6 +478,22 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 15,
+  },
+  shippingLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  freeBadge: {
+    backgroundColor: "#34C759",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  freeBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "bold",
   },
   summaryValue: {
     fontSize: 15,
@@ -396,7 +517,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 16,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     backgroundColor: "rgba(0, 122, 255, 0.1)",
     gap: 12,
   },
@@ -427,7 +548,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     gap: 12,
   },
   placeOrderText: {

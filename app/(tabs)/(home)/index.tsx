@@ -18,7 +18,7 @@ import { Stack, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@react-navigation/native";
 import { products, categories } from "@/data/products";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import * as Haptics from "expo-haptics";
 
@@ -29,7 +29,33 @@ export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  useEffect(() => {
+    // Entrance animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const filteredProducts = products.filter((product) => {
     const matchesCategory =
@@ -44,20 +70,6 @@ export default function HomeScreen() {
   const handleAddToCart = (product: Product) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     addToCart(product, 1);
-    
-    // Animate button
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.9,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
   };
 
   const renderHeaderRight = () => (
@@ -91,25 +103,52 @@ export default function HomeScreen() {
   );
 
   const renderWelcomeCard = () => (
-    <View style={styles.welcomeCard}>
+    <Animated.View 
+      style={[
+        styles.welcomeCard,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+        },
+      ]}
+    >
       <LinearGradient
-        colors={["#FF6B9D", "#C06C84"]}
+        colors={["#FF6B9D", "#C06C84", "#8B5A8E"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.welcomeGradient}
       >
-        <Text style={styles.welcomeTitle}>
-          {user ? `Welcome back, ${user.displayName || "Beauty Lover"}!` : "Welcome to GTM World"}
-        </Text>
-        <Text style={styles.welcomeSubtitle}>
-          Discover premium cosmetics for your beauty routine
-        </Text>
+        <View style={styles.welcomeContent}>
+          <View>
+            <Text style={styles.welcomeTitle}>
+              {user ? `Welcome back, ${user.displayName || "Beauty Lover"}!` : "Welcome to GTM World"}
+            </Text>
+            <Text style={styles.welcomeSubtitle}>
+              Discover premium cosmetics for your beauty routine
+            </Text>
+          </View>
+          <View style={styles.welcomeIcon}>
+            <IconSymbol name="sparkles" size={40} color="#FFFFFF" />
+          </View>
+        </View>
+        
+        {/* Decorative elements */}
+        <View style={styles.decorativeCircle1} />
+        <View style={styles.decorativeCircle2} />
       </LinearGradient>
-    </View>
+    </Animated.View>
   );
 
   const renderSearchBar = () => (
-    <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
+    <Animated.View 
+      style={[
+        styles.searchContainer, 
+        { 
+          backgroundColor: colors.card,
+          opacity: fadeAnim,
+        }
+      ]}
+    >
       <IconSymbol name="magnifyingglass" size={20} color={colors.text} />
       <TextInput
         style={[styles.searchInput, { color: colors.text }]}
@@ -123,118 +162,187 @@ export default function HomeScreen() {
           <IconSymbol name="xmark.circle.fill" size={20} color={colors.text} />
         </Pressable>
       )}
-    </View>
+    </Animated.View>
   );
 
-  const renderCategory = (category: typeof categories[0]) => {
+  const renderCategory = (category: typeof categories[0], index: number) => {
     const isSelected = selectedCategory === category.id;
+    const animValue = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      Animated.timing(animValue, {
+        toValue: 1,
+        duration: 300,
+        delay: index * 50,
+        useNativeDriver: true,
+      }).start();
+    }, []);
+
     return (
-      <Pressable
+      <Animated.View
         key={category.id}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          setSelectedCategory(category.id);
+        style={{
+          opacity: animValue,
+          transform: [
+            {
+              translateX: animValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: [50, 0],
+              }),
+            },
+          ],
         }}
-        style={({ pressed }) => [
-          styles.categoryItem,
-          {
-            backgroundColor: isSelected ? colors.primary : colors.card,
-            opacity: pressed ? 0.7 : 1,
-          },
-        ]}
       >
-        <IconSymbol
-          name={category.icon as any}
-          size={20}
-          color={isSelected ? "#FFFFFF" : colors.text}
-        />
-        <Text
-          style={[
-            styles.categoryText,
-            { color: isSelected ? "#FFFFFF" : colors.text },
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setSelectedCategory(category.id);
+          }}
+          style={({ pressed }) => [
+            styles.categoryItem,
+            {
+              backgroundColor: isSelected ? colors.primary : colors.card,
+              opacity: pressed ? 0.7 : 1,
+              transform: [{ scale: pressed ? 0.95 : 1 }],
+            },
           ]}
         >
-          {category.name}
-        </Text>
-      </Pressable>
+          <IconSymbol
+            name={category.icon as any}
+            size={20}
+            color={isSelected ? "#FFFFFF" : colors.text}
+          />
+          <Text
+            style={[
+              styles.categoryText,
+              { color: isSelected ? "#FFFFFF" : colors.text },
+            ]}
+          >
+            {category.name}
+          </Text>
+        </Pressable>
+      </Animated.View>
     );
   };
 
-  const renderProduct = (product: Product) => (
-    <Pressable
-      key={product.id}
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push(`/product/${product.id}`);
-      }}
-      style={({ pressed }) => [
-        styles.productCard,
-        {
-          backgroundColor: colors.card,
-          opacity: pressed ? 0.9 : 1,
-        },
-      ]}
-    >
-      <View style={styles.productImageContainer}>
-        <Image source={{ uri: product.image }} style={styles.productImage} />
-        {!product.inStock && (
-          <View style={styles.outOfStockBadge}>
-            <Text style={styles.outOfStockText}>Out of Stock</Text>
+  const renderProduct = (product: Product, index: number) => {
+    const animValue = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      Animated.spring(animValue, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        delay: index * 50,
+        useNativeDriver: true,
+      }).start();
+    }, []);
+
+    return (
+      <Animated.View
+        key={product.id}
+        style={{
+          opacity: animValue,
+          transform: [
+            {
+              scale: animValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.8, 1],
+              }),
+            },
+          ],
+        }}
+      >
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push(`/product/${product.id}`);
+          }}
+          style={({ pressed }) => [
+            styles.productCard,
+            {
+              backgroundColor: colors.card,
+              opacity: pressed ? 0.9 : 1,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            },
+          ]}
+        >
+          <View style={styles.productImageContainer}>
+            <Image source={{ uri: product.image }} style={styles.productImage} />
+            {!product.inStock && (
+              <View style={styles.outOfStockBadge}>
+                <Text style={styles.outOfStockText}>Out of Stock</Text>
+              </View>
+            )}
+            {product.rating && product.rating >= 4.8 && (
+              <View style={styles.bestSellerBadge}>
+                <IconSymbol name="star.fill" size={12} color="#FFD700" />
+                <Text style={styles.bestSellerText}>Best Seller</Text>
+              </View>
+            )}
           </View>
-        )}
-      </View>
-      
-      <View style={styles.productInfo}>
-        <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>
-          {product.name}
-        </Text>
-        <Text style={[styles.productDescription, { color: colors.text + "80" }]} numberOfLines={2}>
-          {product.description}
-        </Text>
-        
-        {product.rating && (
-          <View style={styles.ratingContainer}>
-            <IconSymbol name="star.fill" size={14} color="#FFD700" />
-            <Text style={[styles.ratingText, { color: colors.text }]}>
-              {product.rating}
-            </Text>
-            <Text style={[styles.reviewsText, { color: colors.text + "60" }]}>
-              ({product.reviews})
-            </Text>
-          </View>
-        )}
-        
-        <View style={styles.productFooter}>
-          <Text style={[styles.productPrice, { color: colors.primary }]}>
-            ${product.price.toFixed(2)}
-          </Text>
           
-          <Pressable
-            onPress={(e) => {
-              e.stopPropagation();
-              if (product.inStock) {
-                handleAddToCart(product);
-              }
-            }}
-            disabled={!product.inStock}
-            style={({ pressed }) => [
-              styles.addButton,
-              {
-                backgroundColor: product.inStock ? colors.primary : colors.border,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <IconSymbol
-              name={product.inStock ? "plus" : "xmark"}
-              size={18}
-              color="#FFFFFF"
-            />
-          </Pressable>
-        </View>
-      </View>
-    </Pressable>
-  );
+          <View style={styles.productInfo}>
+            <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>
+              {product.name}
+            </Text>
+            <Text style={[styles.productDescription, { color: colors.text + "80" }]} numberOfLines={2}>
+              {product.description}
+            </Text>
+            
+            {product.rating && (
+              <View style={styles.ratingContainer}>
+                <IconSymbol name="star.fill" size={14} color="#FFD700" />
+                <Text style={[styles.ratingText, { color: colors.text }]}>
+                  {product.rating}
+                </Text>
+                <Text style={[styles.reviewsText, { color: colors.text + "60" }]}>
+                  ({product.reviews})
+                </Text>
+              </View>
+            )}
+            
+            <View style={styles.productFooter}>
+              <View>
+                <Text style={[styles.productPrice, { color: colors.primary }]}>
+                  ${product.price.toFixed(2)}
+                </Text>
+                {product.price > 50 && (
+                  <Text style={[styles.freeShippingText, { color: "#34C759" }]}>
+                    Free Shipping
+                  </Text>
+                )}
+              </View>
+              
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  if (product.inStock) {
+                    handleAddToCart(product);
+                  }
+                }}
+                disabled={!product.inStock}
+                style={({ pressed }) => [
+                  styles.addButton,
+                  {
+                    backgroundColor: product.inStock ? colors.primary : colors.border,
+                    opacity: pressed ? 0.7 : 1,
+                    transform: [{ scale: pressed ? 0.9 : 1 }],
+                  },
+                ]}
+              >
+                <IconSymbol
+                  name={product.inStock ? "plus" : "xmark"}
+                  size={18}
+                  color="#FFFFFF"
+                />
+              </Pressable>
+            </View>
+          </View>
+        </Pressable>
+      </Animated.View>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -270,7 +378,7 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoriesContainer}
           >
-            {categories.map(renderCategory)}
+            {categories.map((category, index) => renderCategory(category, index))}
           </ScrollView>
         </View>
 
@@ -285,12 +393,12 @@ export default function HomeScreen() {
           </View>
           
           <View style={styles.productsGrid}>
-            {filteredProducts.map(renderProduct)}
+            {filteredProducts.map((product, index) => renderProduct(product, index))}
           </View>
         </View>
 
         {filteredProducts.length === 0 && (
-          <View style={styles.emptyState}>
+          <Animated.View style={[styles.emptyState, { opacity: fadeAnim }]}>
             <IconSymbol name="magnifyingglass" size={64} color={colors.text + "40"} />
             <Text style={[styles.emptyStateText, { color: colors.text }]}>
               No products found
@@ -298,7 +406,7 @@ export default function HomeScreen() {
             <Text style={[styles.emptyStateSubtext, { color: colors.text + "80" }]}>
               Try adjusting your search or filters
             </Text>
-          </View>
+          </Animated.View>
         )}
       </ScrollView>
     </View>
@@ -346,22 +454,38 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: Platform.OS === "ios" ? 80 : 16,
     marginBottom: 16,
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: "hidden",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 4,
+        elevation: 8,
       },
     }),
   },
   welcomeGradient: {
     padding: 24,
+    position: "relative",
+    overflow: "hidden",
+  },
+  welcomeContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    zIndex: 1,
+  },
+  welcomeIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   welcomeTitle: {
     fontSize: 24,
@@ -373,6 +497,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#FFFFFF",
     opacity: 0.9,
+    maxWidth: 220,
+  },
+  decorativeCircle1: {
+    position: "absolute",
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    top: -50,
+    right: -30,
+  },
+  decorativeCircle2: {
+    position: "absolute",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    bottom: -30,
+    left: -20,
   },
   searchContainer: {
     flexDirection: "row",
@@ -380,18 +523,18 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 20,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 16,
     gap: 12,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 2,
+        elevation: 4,
       },
     }),
   },
@@ -415,9 +558,9 @@ const styles = StyleSheet.create({
   categoryItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 24,
     gap: 8,
     ...Platform.select({
       ios: {
@@ -458,17 +601,17 @@ const styles = StyleSheet.create({
     width: "47%",
     marginHorizontal: 8,
     marginBottom: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: "hidden",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
       },
       android: {
-        elevation: 4,
+        elevation: 6,
       },
     }),
   },
@@ -486,14 +629,31 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
     backgroundColor: "rgba(0, 0, 0, 0.7)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   outOfStockText: {
     color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "600",
+  },
+  bestSellerBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: "rgba(255, 215, 0, 0.9)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  bestSellerText: {
+    color: "#000000",
+    fontSize: 10,
+    fontWeight: "700",
   },
   productInfo: {
     padding: 12,
@@ -529,6 +689,11 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 18,
     fontWeight: "bold",
+  },
+  freeShippingText: {
+    fontSize: 10,
+    fontWeight: "600",
+    marginTop: 2,
   },
   addButton: {
     width: 36,

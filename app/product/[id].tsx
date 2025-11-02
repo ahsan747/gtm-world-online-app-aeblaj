@@ -16,9 +16,10 @@ import {
   Image,
   Alert,
   Dimensions,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import * as Haptics from "expo-haptics";
 
 const { width } = Dimensions.get("window");
@@ -29,6 +30,31 @@ export default function ProductDetailScreen() {
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
   const router = useRouter();
+  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const product = products.find((p) => p.id === id);
 
@@ -71,7 +97,7 @@ export default function ProductDetailScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     addToCart(product, quantity);
     Alert.alert(
-      "Added to Cart",
+      "Added to Cart! 🎉",
       `${quantity} x ${product.name} added to your cart.`,
       [
         {
@@ -86,33 +112,73 @@ export default function ProductDetailScreen() {
     );
   };
 
-  const renderRelatedProduct = (relatedProduct: typeof products[0]) => (
-    <Pressable
-      key={relatedProduct.id}
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push(`/product/${relatedProduct.id}`);
-      }}
-      style={({ pressed }) => [
-        styles.relatedProductCard,
-        {
-          backgroundColor: colors.card,
-          opacity: pressed ? 0.9 : 1,
-        },
-      ]}
-    >
-      <Image
-        source={{ uri: relatedProduct.image }}
-        style={styles.relatedProductImage}
-      />
-      <Text style={[styles.relatedProductName, { color: colors.text }]} numberOfLines={2}>
-        {relatedProduct.name}
-      </Text>
-      <Text style={[styles.relatedProductPrice, { color: colors.primary }]}>
-        ${relatedProduct.price.toFixed(2)}
-      </Text>
-    </Pressable>
-  );
+  const renderRelatedProduct = (relatedProduct: typeof products[0], index: number) => {
+    const animValue = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      Animated.spring(animValue, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        delay: index * 100,
+        useNativeDriver: true,
+      }).start();
+    }, []);
+
+    return (
+      <Animated.View
+        key={relatedProduct.id}
+        style={{
+          opacity: animValue,
+          transform: [
+            {
+              scale: animValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.8, 1],
+              }),
+            },
+          ],
+        }}
+      >
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push(`/product/${relatedProduct.id}`);
+          }}
+          style={({ pressed }) => [
+            styles.relatedProductCard,
+            {
+              backgroundColor: colors.card,
+              opacity: pressed ? 0.9 : 1,
+            },
+          ]}
+        >
+          <Image
+            source={{ uri: relatedProduct.image }}
+            style={styles.relatedProductImage}
+          />
+          <View style={styles.relatedProductInfo}>
+            <Text style={[styles.relatedProductName, { color: colors.text }]} numberOfLines={2}>
+              {relatedProduct.name}
+            </Text>
+            <View style={styles.relatedProductFooter}>
+              <Text style={[styles.relatedProductPrice, { color: colors.primary }]}>
+                ${relatedProduct.price.toFixed(2)}
+              </Text>
+              {relatedProduct.rating && (
+                <View style={styles.relatedProductRating}>
+                  <IconSymbol name="star.fill" size={12} color="#FFD700" />
+                  <Text style={[styles.relatedProductRatingText, { color: colors.text }]}>
+                    {relatedProduct.rating}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </Pressable>
+      </Animated.View>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
@@ -166,26 +232,58 @@ export default function ProductDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.imageContainer}>
+        <Animated.View 
+          style={[
+            styles.imageContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
           <Image source={{ uri: product.image }} style={styles.productImage} />
           {!product.inStock && (
             <View style={styles.outOfStockOverlay}>
               <View style={styles.outOfStockBadge}>
+                <IconSymbol name="xmark.circle" size={24} color="#FFFFFF" />
                 <Text style={styles.outOfStockText}>Out of Stock</Text>
               </View>
             </View>
           )}
-        </View>
+          {product.rating && product.rating >= 4.8 && product.inStock && (
+            <View style={styles.bestSellerBadge}>
+              <IconSymbol name="star.fill" size={16} color="#FFD700" />
+              <Text style={styles.bestSellerText}>Best Seller</Text>
+            </View>
+          )}
+        </Animated.View>
 
-        <View style={[styles.contentContainer, { backgroundColor: colors.background }]}>
+        <Animated.View 
+          style={[
+            styles.contentContainer, 
+            { 
+              backgroundColor: colors.background,
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            }
+          ]}
+        >
           <View style={styles.headerSection}>
             <View style={styles.titleContainer}>
               <Text style={[styles.productName, { color: colors.text }]}>
                 {product.name}
               </Text>
-              <Text style={[styles.productPrice, { color: colors.primary }]}>
-                ${product.price.toFixed(2)}
-              </Text>
+              <View style={styles.priceContainer}>
+                <Text style={[styles.productPrice, { color: colors.primary }]}>
+                  ${product.price.toFixed(2)}
+                </Text>
+                {product.price > 50 && (
+                  <View style={styles.freeShippingBadge}>
+                    <IconSymbol name="truck.box" size={14} color="#34C759" />
+                    <Text style={styles.freeShippingText}>Free Shipping</Text>
+                  </View>
+                )}
+              </View>
             </View>
 
             {product.rating && (
@@ -230,25 +328,33 @@ export default function ProductDetailScreen() {
             </Text>
             <View style={styles.featuresList}>
               <View style={styles.featureItem}>
-                <IconSymbol name="checkmark.circle.fill" size={20} color="#34C759" />
+                <View style={styles.featureIcon}>
+                  <IconSymbol name="checkmark.circle.fill" size={20} color="#34C759" />
+                </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Dermatologically tested
                 </Text>
               </View>
               <View style={styles.featureItem}>
-                <IconSymbol name="checkmark.circle.fill" size={20} color="#34C759" />
+                <View style={styles.featureIcon}>
+                  <IconSymbol name="checkmark.circle.fill" size={20} color="#34C759" />
+                </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Cruelty-free formula
                 </Text>
               </View>
               <View style={styles.featureItem}>
-                <IconSymbol name="checkmark.circle.fill" size={20} color="#34C759" />
+                <View style={styles.featureIcon}>
+                  <IconSymbol name="checkmark.circle.fill" size={20} color="#34C759" />
+                </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Premium ingredients
                 </Text>
               </View>
               <View style={styles.featureItem}>
-                <IconSymbol name="checkmark.circle.fill" size={20} color="#34C759" />
+                <View style={styles.featureIcon}>
+                  <IconSymbol name="checkmark.circle.fill" size={20} color="#34C759" />
+                </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Long-lasting results
                 </Text>
@@ -268,15 +374,23 @@ export default function ProductDetailScreen() {
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.relatedProductsContainer}
                 >
-                  {relatedProducts.map(renderRelatedProduct)}
+                  {relatedProducts.map((product, index) => renderRelatedProduct(product, index))}
                 </ScrollView>
               </View>
             </>
           )}
-        </View>
+        </Animated.View>
       </ScrollView>
 
-      <View style={[styles.footer, { backgroundColor: colors.card }]}>
+      <Animated.View 
+        style={[
+          styles.footer, 
+          { 
+            backgroundColor: colors.card,
+            opacity: fadeAnim,
+          }
+        ]}
+      >
         <View style={styles.quantitySection}>
           <Text style={[styles.quantityLabel, { color: colors.text }]}>
             Quantity
@@ -331,6 +445,7 @@ export default function ProductDetailScreen() {
             {
               backgroundColor: product.inStock ? colors.primary : colors.border,
               opacity: pressed ? 0.8 : 1,
+              transform: [{ scale: pressed ? 0.95 : 1 }],
             },
           ]}
         >
@@ -343,7 +458,7 @@ export default function ProductDetailScreen() {
             {product.inStock ? "Add to Cart" : "Out of Stock"}
           </Text>
         </Pressable>
-      </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -356,7 +471,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
   headerButton: {
     width: 40,
@@ -388,7 +503,7 @@ const styles = StyleSheet.create({
   },
   outOfStockOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -397,11 +512,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   outOfStockText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  bestSellerBadge: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    backgroundColor: "rgba(255, 215, 0, 0.95)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  bestSellerText: {
+    color: "#000000",
+    fontSize: 12,
+    fontWeight: "700",
   },
   contentContainer: {
     borderTopLeftRadius: 24,
@@ -418,11 +564,30 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  priceContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   productPrice: {
     fontSize: 32,
     fontWeight: "bold",
+  },
+  freeShippingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(52, 199, 89, 0.15)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  freeShippingText: {
+    color: "#34C759",
+    fontSize: 12,
+    fontWeight: "600",
   },
   ratingContainer: {
     flexDirection: "row",
@@ -456,51 +621,74 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   featuresList: {
-    gap: 12,
+    gap: 14,
   },
   featureItem: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
+  featureIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(52, 199, 89, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   featureText: {
     fontSize: 15,
+    flex: 1,
   },
   relatedProductsContainer: {
     gap: 12,
     paddingRight: 20,
   },
   relatedProductCard: {
-    width: 140,
-    borderRadius: 12,
+    width: 150,
+    borderRadius: 16,
     overflow: "hidden",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 2,
+        elevation: 4,
       },
     }),
   },
   relatedProductImage: {
     width: "100%",
-    height: 140,
+    height: 150,
+  },
+  relatedProductInfo: {
+    padding: 10,
   },
   relatedProductName: {
     fontSize: 13,
     fontWeight: "600",
-    padding: 8,
-    paddingBottom: 4,
+    marginBottom: 8,
+  },
+  relatedProductFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   relatedProductPrice: {
     fontSize: 15,
     fontWeight: "bold",
-    paddingHorizontal: 8,
-    paddingBottom: 8,
+  },
+  relatedProductRating: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  relatedProductRatingText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   footer: {
     position: "absolute",
@@ -556,7 +744,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     gap: 12,
   },
   addToCartText: {
