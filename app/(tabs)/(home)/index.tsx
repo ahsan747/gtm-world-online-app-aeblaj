@@ -1,8 +1,7 @@
 
-import React, { useState } from "react";
-import { Stack, useRouter } from "expo-router";
+import { GlassView } from "expo-glass-effect";
+import { Product } from "@/types/Product";
 import {
-  FlatList,
   Pressable,
   StyleSheet,
   View,
@@ -10,124 +9,73 @@ import {
   Platform,
   Image,
   ScrollView,
+  TextInput,
+  Animated,
 } from "react-native";
-import { IconSymbol } from "@/components/IconSymbol";
-import { GlassView } from "expo-glass-effect";
-import { useTheme } from "@react-navigation/native";
-import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
+import { IconSymbol } from "@/components/IconSymbol";
+import { Stack, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "@react-navigation/native";
 import { products, categories } from "@/data/products";
-import { Product } from "@/types/Product";
+import React, { useState, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import * as Haptics from "expo-haptics";
 
 export default function HomeScreen() {
-  const theme = useTheme();
   const { user } = useAuth();
+  const { colors } = useTheme();
   const { addToCart, getCartItemCount } = useCart();
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  const filteredProducts = selectedCategory === 'all'
-    ? products
-    : products.filter(p => p.category === selectedCategory);
+  const filteredProducts = products.filter((product) => {
+    const matchesCategory =
+      selectedCategory === "all" || product.category === selectedCategory;
+    const matchesSearch =
+      searchQuery === "" ||
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   const handleAddToCart = (product: Product) => {
-    addToCart(product);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    addToCart(product, 1);
+    
+    // Animate button
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.9,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
-
-  const renderCategory = ({ item }: { item: typeof categories[0] }) => {
-    const isSelected = selectedCategory === item.id;
-    return (
-      <Pressable onPress={() => setSelectedCategory(item.id)}>
-        <GlassView
-          style={[
-            styles.categoryChip,
-            isSelected && styles.categoryChipSelected,
-            Platform.OS !== 'ios' && {
-              backgroundColor: isSelected
-                ? theme.colors.primary + '20'
-                : theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-            }
-          ]}
-          glassEffectStyle={isSelected ? "clear" : "regular"}
-        >
-          <IconSymbol
-            name={item.icon as any}
-            size={18}
-            color={isSelected ? theme.colors.primary : theme.colors.text}
-          />
-          <Text
-            style={[
-              styles.categoryText,
-              { color: isSelected ? theme.colors.primary : theme.colors.text }
-            ]}
-          >
-            {item.name}
-          </Text>
-        </GlassView>
-      </Pressable>
-    );
-  };
-
-  const renderProduct = ({ item }: { item: Product }) => (
-    <Pressable
-      style={styles.productCard}
-      onPress={() => router.push(`/product/${item.id}` as any)}
-    >
-      <GlassView
-        style={[
-          styles.productCardInner,
-          Platform.OS !== 'ios' && {
-            backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-          }
-        ]}
-        glassEffectStyle="regular"
-      >
-        <Image source={{ uri: item.image }} style={styles.productImage} />
-        <View style={styles.productInfo}>
-          <Text style={[styles.productName, { color: theme.colors.text }]} numberOfLines={2}>
-            {item.name}
-          </Text>
-          <Text style={[styles.productDescription, { color: theme.dark ? '#98989D' : '#666' }]} numberOfLines={2}>
-            {item.description}
-          </Text>
-          <View style={styles.productFooter}>
-            <View>
-              <Text style={[styles.productPrice, { color: theme.colors.primary }]}>
-                ${item.price.toFixed(2)}
-              </Text>
-              {item.rating && (
-                <View style={styles.ratingContainer}>
-                  <IconSymbol name="star.fill" size={12} color="#FFD700" />
-                  <Text style={[styles.ratingText, { color: theme.dark ? '#98989D' : '#666' }]}>
-                    {item.rating} ({item.reviews})
-                  </Text>
-                </View>
-              )}
-            </View>
-            <Pressable
-              style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleAddToCart(item);
-              }}
-            >
-              <IconSymbol name="plus" size={20} color="#FFFFFF" />
-            </Pressable>
-          </View>
-        </View>
-      </GlassView>
-    </Pressable>
-  );
 
   const renderHeaderRight = () => (
     <Pressable
-      onPress={() => router.push('/(tabs)/cart')}
-      style={styles.headerButtonContainer}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        router.push("/(tabs)/cart");
+      }}
+      style={({ pressed }) => [
+        styles.headerButton,
+        { opacity: pressed ? 0.7 : 1 },
+      ]}
     >
-      <IconSymbol name="cart" color={theme.colors.primary} size={24} />
+      <IconSymbol name="shopping.cart" size={24} color={colors.text} />
       {getCartItemCount() > 0 && (
-        <View style={[styles.badge, { backgroundColor: theme.colors.primary }]}>
+        <View
+          style={[styles.badge, { backgroundColor: colors.notification }]}
+        >
           <Text style={styles.badgeText}>{getCartItemCount()}</Text>
         </View>
       )}
@@ -136,115 +84,224 @@ export default function HomeScreen() {
 
   const renderHeaderLeft = () => (
     <View style={styles.headerLeft}>
-      <Text style={[styles.headerTitle, { color: theme.colors.text }]}>GTM World</Text>
-      <Text style={[styles.headerSubtitle, { color: theme.dark ? '#98989D' : '#666' }]}>
-        Online
+      <Text style={[styles.headerTitle, { color: colors.text }]}>
+        GTM World
       </Text>
     </View>
   );
 
-  const renderWelcomeCard = () => {
-    if (user) {
-      return (
-        <GlassView
-          style={[
-            styles.welcomeCard,
-            Platform.OS !== 'ios' && {
-              backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-            }
-          ]}
-          glassEffectStyle="regular"
-        >
-          <LinearGradient
-            colors={['#FF6B9D', '#C44569']}
-            style={styles.welcomeIcon}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <IconSymbol name="sparkles" size={28} color="#FFFFFF" />
-          </LinearGradient>
-          <View style={styles.welcomeContent}>
-            <Text style={[styles.welcomeTitle, { color: theme.colors.text }]}>
-              Welcome back, {user.displayName || 'User'}!
-            </Text>
-            <Text style={[styles.welcomeSubtitle, { color: theme.dark ? '#98989D' : '#666' }]}>
-              Discover our premium cosmetics
-            </Text>
-          </View>
-        </GlassView>
-      );
-    }
-
-    return (
-      <GlassView
-        style={[
-          styles.welcomeCard,
-          Platform.OS !== 'ios' && {
-            backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-          }
-        ]}
-        glassEffectStyle="regular"
+  const renderWelcomeCard = () => (
+    <View style={styles.welcomeCard}>
+      <LinearGradient
+        colors={["#FF6B9D", "#C06C84"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.welcomeGradient}
       >
-        <LinearGradient
-          colors={['#FF6B9D', '#C44569']}
-          style={styles.welcomeIcon}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <Text style={styles.welcomeTitle}>
+          {user ? `Welcome back, ${user.displayName || "Beauty Lover"}!` : "Welcome to GTM World"}
+        </Text>
+        <Text style={styles.welcomeSubtitle}>
+          Discover premium cosmetics for your beauty routine
+        </Text>
+      </LinearGradient>
+    </View>
+  );
+
+  const renderSearchBar = () => (
+    <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
+      <IconSymbol name="magnifyingglass" size={20} color={colors.text} />
+      <TextInput
+        style={[styles.searchInput, { color: colors.text }]}
+        placeholder="Search products..."
+        placeholderTextColor={colors.text + "80"}
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+      />
+      {searchQuery.length > 0 && (
+        <Pressable onPress={() => setSearchQuery("")}>
+          <IconSymbol name="xmark.circle.fill" size={20} color={colors.text} />
+        </Pressable>
+      )}
+    </View>
+  );
+
+  const renderCategory = (category: typeof categories[0]) => {
+    const isSelected = selectedCategory === category.id;
+    return (
+      <Pressable
+        key={category.id}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setSelectedCategory(category.id);
+        }}
+        style={({ pressed }) => [
+          styles.categoryItem,
+          {
+            backgroundColor: isSelected ? colors.primary : colors.card,
+            opacity: pressed ? 0.7 : 1,
+          },
+        ]}
+      >
+        <IconSymbol
+          name={category.icon as any}
+          size={20}
+          color={isSelected ? "#FFFFFF" : colors.text}
+        />
+        <Text
+          style={[
+            styles.categoryText,
+            { color: isSelected ? "#FFFFFF" : colors.text },
+          ]}
         >
-          <IconSymbol name="sparkles" size={28} color="#FFFFFF" />
-        </LinearGradient>
-        <View style={styles.welcomeContent}>
-          <Text style={[styles.welcomeTitle, { color: theme.colors.text }]}>
-            Welcome to GTM World Online
-          </Text>
-          <Text style={[styles.welcomeSubtitle, { color: theme.dark ? '#98989D' : '#666' }]}>
-            Browse our products. Sign in to checkout.
-          </Text>
-        </View>
-      </GlassView>
+          {category.name}
+        </Text>
+      </Pressable>
     );
   };
 
-  return (
-    <>
-      {Platform.OS === 'ios' && (
-        <Stack.Screen
-          options={{
-            headerLeft: renderHeaderLeft,
-            headerRight: renderHeaderRight,
-            headerTitle: "",
-          }}
-        />
-      )}
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <FlatList
-          data={filteredProducts}
-          renderItem={renderProduct}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          ListHeaderComponent={
-            <>
-              {renderWelcomeCard()}
-              <FlatList
-                data={categories}
-                renderItem={renderCategory}
-                keyExtractor={(item) => item.id}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.categoriesContainer}
-              />
-            </>
-          }
-          contentContainerStyle={[
-            styles.listContainer,
-            Platform.OS !== 'ios' && styles.listContainerWithTabBar
-          ]}
-          columnWrapperStyle={styles.columnWrapper}
-          contentInsetAdjustmentBehavior="automatic"
-          showsVerticalScrollIndicator={false}
-        />
+  const renderProduct = (product: Product) => (
+    <Pressable
+      key={product.id}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        router.push(`/product/${product.id}`);
+      }}
+      style={({ pressed }) => [
+        styles.productCard,
+        {
+          backgroundColor: colors.card,
+          opacity: pressed ? 0.9 : 1,
+        },
+      ]}
+    >
+      <View style={styles.productImageContainer}>
+        <Image source={{ uri: product.image }} style={styles.productImage} />
+        {!product.inStock && (
+          <View style={styles.outOfStockBadge}>
+            <Text style={styles.outOfStockText}>Out of Stock</Text>
+          </View>
+        )}
       </View>
-    </>
+      
+      <View style={styles.productInfo}>
+        <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>
+          {product.name}
+        </Text>
+        <Text style={[styles.productDescription, { color: colors.text + "80" }]} numberOfLines={2}>
+          {product.description}
+        </Text>
+        
+        {product.rating && (
+          <View style={styles.ratingContainer}>
+            <IconSymbol name="star.fill" size={14} color="#FFD700" />
+            <Text style={[styles.ratingText, { color: colors.text }]}>
+              {product.rating}
+            </Text>
+            <Text style={[styles.reviewsText, { color: colors.text + "60" }]}>
+              ({product.reviews})
+            </Text>
+          </View>
+        )}
+        
+        <View style={styles.productFooter}>
+          <Text style={[styles.productPrice, { color: colors.primary }]}>
+            ${product.price.toFixed(2)}
+          </Text>
+          
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              if (product.inStock) {
+                handleAddToCart(product);
+              }
+            }}
+            disabled={!product.inStock}
+            style={({ pressed }) => [
+              styles.addButton,
+              {
+                backgroundColor: product.inStock ? colors.primary : colors.border,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            <IconSymbol
+              name={product.inStock ? "plus" : "xmark"}
+              size={18}
+              color="#FFFFFF"
+            />
+          </Pressable>
+        </View>
+      </View>
+    </Pressable>
+  );
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTitle: "",
+          headerLeft: renderHeaderLeft,
+          headerRight: renderHeaderRight,
+          headerTransparent: Platform.OS === "ios",
+          headerBlurEffect: "regular",
+          headerStyle: {
+            backgroundColor: Platform.OS === "android" ? colors.card : "transparent",
+          },
+        }}
+      />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderWelcomeCard()}
+        
+        {renderSearchBar()}
+
+        <View style={styles.categoriesSection}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Categories
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesContainer}
+          >
+            {categories.map(renderCategory)}
+          </ScrollView>
+        </View>
+
+        <View style={styles.productsSection}>
+          <View style={styles.productsSectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {selectedCategory === "all" ? "All Products" : categories.find(c => c.id === selectedCategory)?.name}
+            </Text>
+            <Text style={[styles.productsCount, { color: colors.text + "80" }]}>
+              {filteredProducts.length} items
+            </Text>
+          </View>
+          
+          <View style={styles.productsGrid}>
+            {filteredProducts.map(renderProduct)}
+          </View>
+        </View>
+
+        {filteredProducts.length === 0 && (
+          <View style={styles.emptyState}>
+            <IconSymbol name="magnifyingglass" size={64} color={colors.text + "40"} />
+            <Text style={[styles.emptyStateText, { color: colors.text }]}>
+              No products found
+            </Text>
+            <Text style={[styles.emptyStateSubtext, { color: colors.text + "80" }]}>
+              Try adjusting your search or filters
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -252,85 +309,198 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  listContainer: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-  },
-  listContainerWithTabBar: {
-    paddingBottom: 100,
-  },
-  welcomeCard: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  welcomeIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-    boxShadow: '0px 4px 12px rgba(255, 107, 157, 0.3)',
-    elevation: 8,
-  },
-  welcomeContent: {
+  scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  headerButton: {
+    marginRight: 16,
+    position: "relative",
+  },
+  badge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "bold",
+  },
+  headerLeft: {
+    marginLeft: 16,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  welcomeCard: {
+    marginHorizontal: 16,
+    marginTop: Platform.OS === "ios" ? 80 : 16,
+    marginBottom: 16,
+    borderRadius: 20,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  welcomeGradient: {
+    padding: 24,
+  },
   welcomeTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 8,
   },
   welcomeSubtitle: {
     fontSize: 14,
+    color: "#FFFFFF",
+    opacity: 0.9,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+  },
+  categoriesSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginHorizontal: 16,
+    marginBottom: 12,
   },
   categoriesContainer: {
-    paddingBottom: 16,
-    gap: 8,
+    paddingHorizontal: 16,
+    gap: 12,
   },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  categoryItem: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    gap: 6,
-  },
-  categoryChipSelected: {
-    borderWidth: 1,
-    borderColor: 'rgba(0, 122, 255, 0.3)',
+    gap: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   categoryText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
-  columnWrapper: {
-    justifyContent: 'space-between',
+  productsSection: {
+    marginBottom: 24,
+  },
+  productsSectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  productsCount: {
+    fontSize: 14,
+  },
+  productsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 8,
     gap: 12,
   },
   productCard: {
-    flex: 1,
-    maxWidth: '48%',
-    marginBottom: 12,
+    width: "47%",
+    marginHorizontal: 8,
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
-  productCardInner: {
-    borderRadius: 12,
-    overflow: 'hidden',
+  productImageContainer: {
+    width: "100%",
+    height: 180,
+    position: "relative",
   },
   productImage: {
-    width: '100%',
-    height: 160,
-    backgroundColor: '#f0f0f0',
+    width: "100%",
+    height: "100%",
+  },
+  outOfStockBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  outOfStockText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "600",
   },
   productInfo: {
     padding: 12,
   },
   productName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: "600",
     marginBottom: 4,
   },
   productDescription: {
@@ -338,62 +508,47 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 16,
   },
-  productFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  productPrice: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
   ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
     gap: 4,
   },
   ratingText: {
-    fontSize: 11,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  reviewsText: {
+    fontSize: 12,
+  },
+  productFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  productPrice: {
+    fontSize: 18,
+    fontWeight: "bold",
   },
   addButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    boxShadow: '0px 2px 8px rgba(0, 122, 255, 0.3)',
-    elevation: 4,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  headerButtonContainer: {
-    padding: 6,
-    position: 'relative',
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
   },
-  badge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 16,
   },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  headerLeft: {
-    paddingLeft: 6,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  headerSubtitle: {
+  emptyStateSubtext: {
     fontSize: 14,
-    fontWeight: '500',
+    marginTop: 8,
   },
 });

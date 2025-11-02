@@ -1,6 +1,8 @@
 
-import React, { useState } from "react";
+import { GlassView } from "expo-glass-effect";
+import { useCart } from "@/contexts/CartContext";
 import { useRouter, Stack } from "expo-router";
+import { IconSymbol } from "@/components/IconSymbol";
 import {
   View,
   Text,
@@ -10,294 +12,295 @@ import {
   Pressable,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
 } from "react-native";
-import { IconSymbol } from "@/components/IconSymbol";
-import { GlassView } from "expo-glass-effect";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useCart } from "@/contexts/CartContext";
+import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import * as Haptics from "expo-haptics";
 
 export default function CheckoutScreen() {
-  const theme = useTheme();
-  const router = useRouter();
-  const { cart, getCartTotal, clearCart } = useCart();
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const { cart, getCartTotal, clearCart } = useCart();
+  const [name, setName] = useState(user?.displayName || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [country, setCountry] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const router = useRouter();
 
-  const [shippingInfo, setShippingInfo] = useState({
-    fullName: user?.displayName || '',
-    email: user?.email || '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-  });
+  const subtotal = getCartTotal();
+  const shipping = subtotal > 50 ? 0 : 5.99;
+  const tax = subtotal * 0.08;
+  const total = subtotal + shipping + tax;
 
-  const handlePlaceOrder = () => {
-    // Validate shipping info
-    if (!shippingInfo.fullName || !shippingInfo.email || !shippingInfo.phone ||
-        !shippingInfo.address || !shippingInfo.city || !shippingInfo.state || !shippingInfo.zipCode) {
-      Alert.alert("Missing Information", "Please fill in all shipping details.");
+  const handlePlaceOrder = async () => {
+    if (!name || !email || !phone || !address || !city || !zipCode || !country) {
+      Alert.alert("Missing Information", "Please fill in all required fields.");
       return;
     }
 
-    // Simulate order placement
-    Alert.alert(
-      "Order Placed Successfully!",
-      `Thank you for your order, ${shippingInfo.fullName}! Your order total is $${getCartTotal().toFixed(2)}. We'll send a confirmation email to ${shippingInfo.email}.`,
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            clearCart();
-            router.replace("/(tabs)/(home)/");
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
+      return;
+    }
+
+    setIsProcessing(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    // Simulate order processing
+    setTimeout(() => {
+      setIsProcessing(false);
+      clearCart();
+      
+      Alert.alert(
+        "Order Placed Successfully! 🎉",
+        `Thank you for your order, ${name}!\n\nOrder Total: $${total.toFixed(2)}\n\nYou will receive a confirmation email at ${email} shortly.`,
+        [
+          {
+            text: "Continue Shopping",
+            onPress: () => router.replace("/(tabs)/(home)"),
           },
-        },
-      ]
-    );
+        ]
+      );
+    }, 2000);
   };
 
   return (
-    <>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
       <Stack.Screen
         options={{
+          headerShown: true,
           title: "Checkout",
-          headerBackTitle: "Back",
+          headerStyle: {
+            backgroundColor: Platform.OS === "android" ? colors.card : "transparent",
+          },
+          headerTransparent: Platform.OS === "ios",
+          headerBlurEffect: "regular",
+          headerLeft: () => (
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.back();
+              }}
+              style={({ pressed }) => [
+                styles.headerButton,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <IconSymbol name="chevron.left" size={24} color={colors.text} />
+            </Pressable>
+          ),
         }}
       />
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
-        edges={['bottom']}
+
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <GlassView
-            style={[
-              styles.card,
-              Platform.OS !== 'ios' && {
-                backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-              }
-            ]}
-            glassEffectStyle="regular"
-          >
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              Shipping Information
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Contact Information
             </Text>
+            
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>
+                Full Name *
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
+                placeholder="John Doe"
+                placeholderTextColor={colors.text + "60"}
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+              />
+            </View>
 
-            <Text style={[styles.label, { color: theme.dark ? '#98989D' : '#666' }]}>
-              Full Name
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.colors.text,
-                  backgroundColor: theme.dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                  borderColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                }
-              ]}
-              value={shippingInfo.fullName}
-              onChangeText={(text) => setShippingInfo({ ...shippingInfo, fullName: text })}
-              placeholder="John Doe"
-              placeholderTextColor={theme.dark ? '#666' : '#999'}
-            />
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>
+                Email Address *
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
+                placeholder="john@example.com"
+                placeholderTextColor={colors.text + "60"}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
 
-            <Text style={[styles.label, { color: theme.dark ? '#98989D' : '#666' }]}>
-              Email
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.colors.text,
-                  backgroundColor: theme.dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                  borderColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                }
-              ]}
-              value={shippingInfo.email}
-              onChangeText={(text) => setShippingInfo({ ...shippingInfo, email: text })}
-              placeholder="john@example.com"
-              placeholderTextColor={theme.dark ? '#666' : '#999'}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>
+                Phone Number *
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
+                placeholder="+1 (555) 123-4567"
+                placeholderTextColor={colors.text + "60"}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+              />
+            </View>
+          </View>
 
-            <Text style={[styles.label, { color: theme.dark ? '#98989D' : '#666' }]}>
-              Phone
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Shipping Address
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.colors.text,
-                  backgroundColor: theme.dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                  borderColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                }
-              ]}
-              value={shippingInfo.phone}
-              onChangeText={(text) => setShippingInfo({ ...shippingInfo, phone: text })}
-              placeholder="+1 (555) 123-4567"
-              placeholderTextColor={theme.dark ? '#666' : '#999'}
-              keyboardType="phone-pad"
-            />
-
-            <Text style={[styles.label, { color: theme.dark ? '#98989D' : '#666' }]}>
-              Address
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.colors.text,
-                  backgroundColor: theme.dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                  borderColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                }
-              ]}
-              value={shippingInfo.address}
-              onChangeText={(text) => setShippingInfo({ ...shippingInfo, address: text })}
-              placeholder="123 Main Street"
-              placeholderTextColor={theme.dark ? '#666' : '#999'}
-            />
+            
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>
+                Street Address *
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
+                placeholder="123 Main Street"
+                placeholderTextColor={colors.text + "60"}
+                value={address}
+                onChangeText={setAddress}
+                autoCapitalize="words"
+              />
+            </View>
 
             <View style={styles.row}>
-              <View style={styles.halfWidth}>
-                <Text style={[styles.label, { color: theme.dark ? '#98989D' : '#666' }]}>
-                  City
+              <View style={[styles.inputGroup, styles.halfWidth]}>
+                <Text style={[styles.label, { color: colors.text }]}>
+                  City *
                 </Text>
                 <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      color: theme.colors.text,
-                      backgroundColor: theme.dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                      borderColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                    }
-                  ]}
-                  value={shippingInfo.city}
-                  onChangeText={(text) => setShippingInfo({ ...shippingInfo, city: text })}
+                  style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
                   placeholder="New York"
-                  placeholderTextColor={theme.dark ? '#666' : '#999'}
+                  placeholderTextColor={colors.text + "60"}
+                  value={city}
+                  onChangeText={setCity}
+                  autoCapitalize="words"
                 />
               </View>
 
-              <View style={styles.halfWidth}>
-                <Text style={[styles.label, { color: theme.dark ? '#98989D' : '#666' }]}>
-                  State
+              <View style={[styles.inputGroup, styles.halfWidth]}>
+                <Text style={[styles.label, { color: colors.text }]}>
+                  ZIP Code *
                 </Text>
                 <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      color: theme.colors.text,
-                      backgroundColor: theme.dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                      borderColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                    }
-                  ]}
-                  value={shippingInfo.state}
-                  onChangeText={(text) => setShippingInfo({ ...shippingInfo, state: text })}
-                  placeholder="NY"
-                  placeholderTextColor={theme.dark ? '#666' : '#999'}
+                  style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
+                  placeholder="10001"
+                  placeholderTextColor={colors.text + "60"}
+                  value={zipCode}
+                  onChangeText={setZipCode}
+                  keyboardType="number-pad"
                 />
               </View>
             </View>
 
-            <Text style={[styles.label, { color: theme.dark ? '#98989D' : '#666' }]}>
-              ZIP Code
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.colors.text,
-                  backgroundColor: theme.dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                  borderColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                }
-              ]}
-              value={shippingInfo.zipCode}
-              onChangeText={(text) => setShippingInfo({ ...shippingInfo, zipCode: text })}
-              placeholder="10001"
-              placeholderTextColor={theme.dark ? '#666' : '#999'}
-              keyboardType="number-pad"
-            />
-          </GlassView>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>
+                Country *
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
+                placeholder="United States"
+                placeholderTextColor={colors.text + "60"}
+                value={country}
+                onChangeText={setCountry}
+                autoCapitalize="words"
+              />
+            </View>
+          </View>
 
-          <GlassView
-            style={[
-              styles.card,
-              Platform.OS !== 'ios' && {
-                backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-              }
-            ]}
-            glassEffectStyle="regular"
-          >
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Order Summary
             </Text>
-
-            {cart.map((item) => (
-              <View key={item.product.id} style={styles.orderItem}>
-                <Text style={[styles.orderItemName, { color: theme.colors.text }]}>
-                  {item.product.name} x {item.quantity}
-                </Text>
-                <Text style={[styles.orderItemPrice, { color: theme.colors.text }]}>
-                  ${(item.product.price * item.quantity).toFixed(2)}
-                </Text>
-              </View>
-            ))}
-
-            <View style={[styles.divider, { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]} />
-
-            <View style={styles.orderItem}>
-              <Text style={[styles.orderItemName, { color: theme.dark ? '#98989D' : '#666' }]}>
-                Subtotal
+            
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: colors.text }]}>
+                Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)
               </Text>
-              <Text style={[styles.orderItemPrice, { color: theme.colors.text }]}>
-                ${getCartTotal().toFixed(2)}
+              <Text style={[styles.summaryValue, { color: colors.text }]}>
+                ${subtotal.toFixed(2)}
               </Text>
             </View>
-
-            <View style={styles.orderItem}>
-              <Text style={[styles.orderItemName, { color: theme.dark ? '#98989D' : '#666' }]}>
+            
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: colors.text }]}>
                 Shipping
               </Text>
-              <Text style={[styles.orderItemPrice, { color: theme.colors.text }]}>
-                Free
+              <Text style={[styles.summaryValue, { color: shipping === 0 ? "#34C759" : colors.text }]}>
+                {shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}
               </Text>
             </View>
-
-            <View style={[styles.divider, { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]} />
-
-            <View style={styles.orderItem}>
-              <Text style={[styles.totalLabel, { color: theme.colors.text }]}>
+            
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: colors.text }]}>
+                Tax (8%)
+              </Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>
+                ${tax.toFixed(2)}
+              </Text>
+            </View>
+            
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            
+            <View style={styles.summaryRow}>
+              <Text style={[styles.totalLabel, { color: colors.text }]}>
                 Total
               </Text>
-              <Text style={[styles.totalValue, { color: theme.colors.primary }]}>
-                ${getCartTotal().toFixed(2)}
+              <Text style={[styles.totalValue, { color: colors.primary }]}>
+                ${total.toFixed(2)}
               </Text>
             </View>
-          </GlassView>
+          </View>
+
+          <View style={styles.infoBox}>
+            <IconSymbol name="info.circle" size={20} color={colors.primary} />
+            <Text style={[styles.infoText, { color: colors.text }]}>
+              Your order will be processed securely. You&apos;ll receive a confirmation email shortly.
+            </Text>
+          </View>
         </ScrollView>
 
-        <View style={[styles.footer, { backgroundColor: theme.colors.background }]}>
-          <Pressable style={styles.placeOrderButton} onPress={handlePlaceOrder}>
-            <LinearGradient
-              colors={['#FF6B9D', '#C44569']}
-              style={styles.placeOrderButtonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <IconSymbol name="checkmark.circle" size={20} color="#FFFFFF" />
-              <Text style={styles.placeOrderButtonText}>Place Order</Text>
-            </LinearGradient>
+        <View style={[styles.footer, { backgroundColor: colors.card }]}>
+          <Pressable
+            onPress={handlePlaceOrder}
+            disabled={isProcessing}
+            style={({ pressed }) => [
+              styles.placeOrderButton,
+              {
+                backgroundColor: colors.primary,
+                opacity: isProcessing ? 0.6 : pressed ? 0.8 : 1,
+              },
+            ]}
+          >
+            {isProcessing ? (
+              <Text style={styles.placeOrderText}>Processing...</Text>
+            ) : (
+              <>
+                <IconSymbol name="checkmark.circle.fill" size={24} color="#FFFFFF" />
+                <Text style={styles.placeOrderText}>
+                  Place Order - ${total.toFixed(2)}
+                </Text>
+              </>
+            )}
           </Pressable>
         </View>
-      </SafeAreaView>
-    </>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -305,90 +308,131 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  keyboardView: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 20,
   },
-  card: {
-    borderRadius: 16,
+  headerButton: {
+    marginLeft: 16,
+  },
+  section: {
+    marginHorizontal: 16,
+    marginTop: 16,
     padding: 20,
-    marginBottom: 16,
+    borderRadius: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 20,
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 16,
+  },
+  inputGroup: {
+    marginBottom: 16,
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 8,
-    marginTop: 12,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.1)",
   },
   row: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   halfWidth: {
     flex: 1,
   },
-  orderItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
-  orderItemName: {
-    fontSize: 16,
-    flex: 1,
+  summaryLabel: {
+    fontSize: 15,
   },
-  orderItemPrice: {
-    fontSize: 16,
-    fontWeight: '600',
+  summaryValue: {
+    fontSize: 15,
+    fontWeight: "600",
   },
   divider: {
     height: 1,
     marginVertical: 12,
   },
   totalLabel: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: "bold",
   },
   totalValue: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "bold",
+  },
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: "rgba(0, 122, 255, 0.1)",
+    gap: 12,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     padding: 16,
+    paddingBottom: Platform.OS === "ios" ? 32 : 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    borderTopColor: "rgba(0, 0, 0, 0.1)",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   placeOrderButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  placeOrderButtonGradient: {
-    flexDirection: 'row',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    borderRadius: 12,
+    gap: 12,
   },
-  placeOrderButtonText: {
-    color: '#FFFFFF',
+  placeOrderText: {
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "bold",
   },
 });
