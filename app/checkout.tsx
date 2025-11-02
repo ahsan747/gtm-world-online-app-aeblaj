@@ -52,7 +52,7 @@ export default function CheckoutScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, slideAnim]);
+  }, []); // Empty dependency array is intentional - animation should only run once on mount
 
   const subtotal = getCartTotal();
   const shipping = subtotal > 50 ? 0 : 5.99;

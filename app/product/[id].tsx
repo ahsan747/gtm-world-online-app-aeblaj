@@ -36,7 +36,7 @@ const RelatedProductCard = ({ relatedProduct, index, colors, router }: any) => {
       delay: index * 100,
       useNativeDriver: true,
     }).start();
-  }, [animValue, index]);
+  }, []); // Empty dependency array is intentional - animation should only run once on mount
 
   return (
     <Animated.View
@@ -122,7 +122,7 @@ export default function ProductDetailScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, scaleAnim, slideAnim]);
+  }, []); // Empty dependency array is intentional - animation should only run once on mount
 
   const product = products.find((p) => p.id === id);
 

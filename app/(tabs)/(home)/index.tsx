@@ -34,7 +34,7 @@ const CategoryItem = ({ category, index, selectedCategory, onSelect, colors }: a
       delay: index * 50,
       useNativeDriver: true,
     }).start();
-  }, [animValue, index]);
+  }, []); // Empty dependency array is intentional - animation should only run once on mount
 
   return (
     <Animated.View
@@ -94,7 +94,7 @@ const ProductCard = ({ product, index, onAddToCart, colors, router }: any) => {
       delay: index * 50,
       useNativeDriver: true,
     }).start();
-  }, [animValue, index]);
+  }, []); // Empty dependency array is intentional - animation should only run once on mount
 
   return (
     <Animated.View
@@ -215,7 +215,7 @@ export default function HomeScreen() {
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
   useEffect(() => {
-    // Entrance animations
+    // Entrance animations - only run once on mount
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -234,7 +234,7 @@ export default function HomeScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, scaleAnim, slideAnim]);
+  }, []); // Empty dependency array is intentional - animation should only run once on mount
 
   const filteredProducts = products.filter((product) => {
     const matchesCategory =

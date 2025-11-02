@@ -33,7 +33,7 @@ const CartItemCard = ({ item, index, onRemove, onUpdateQuantity, colors }: any) 
       delay: index * 80,
       useNativeDriver: true,
     }).start();
-  }, [index, itemAnim]);
+  }, []); // Empty dependency array is intentional - animation should only run once on mount
 
   return (
     <Animated.View
@@ -143,7 +143,7 @@ export default function CartScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, slideAnim]);
+  }, []); // Empty dependency array is intentional - animation should only run once on mount
 
   const handleCheckout = () => {
     if (cart.length === 0) {
