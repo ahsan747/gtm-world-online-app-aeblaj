@@ -247,8 +247,10 @@ export default function HomeScreen() {
   });
 
   const handleAddToCart = (product: Product) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     addToCart(product, 1);
+    // Navigate to checkout after adding to cart
+    router.push("/checkout");
   };
 
   const renderHeaderRight = () => (

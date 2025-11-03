@@ -164,20 +164,8 @@ export default function ProductDetailScreen() {
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     addToCart(product, quantity);
-    Alert.alert(
-      "Added to Cart! 🎉",
-      `${quantity} x ${product.name} added to your cart.`,
-      [
-        {
-          text: "Continue Shopping",
-          style: "cancel",
-        },
-        {
-          text: "View Cart",
-          onPress: () => router.push("/(tabs)/cart"),
-        },
-      ]
-    );
+    // Navigate to checkout after adding to cart
+    router.push("/checkout");
   };
 
   return (
