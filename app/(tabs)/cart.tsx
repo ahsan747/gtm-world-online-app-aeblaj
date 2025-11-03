@@ -146,9 +146,10 @@ export default function CartScreen() {
   }, []); // Empty dependency array is intentional - animation should only run once on mount
 
   const handleCheckout = () => {
-    console.log("Checkout button pressed");
+    console.log("Checkout button pressed - starting checkout flow");
     
     if (cart.length === 0) {
+      console.log("Cart is empty, showing alert");
       Alert.alert("Empty Cart", "Please add items to your cart before checking out.");
       return;
     }
@@ -156,6 +157,7 @@ export default function CartScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     if (!user) {
+      console.log("User not logged in, showing login prompt");
       Alert.alert(
         "Login Required",
         "Please login or continue as guest to proceed with checkout.",
@@ -163,18 +165,19 @@ export default function CartScreen() {
           {
             text: "Cancel",
             style: "cancel",
+            onPress: () => console.log("Checkout cancelled"),
           },
           {
             text: "Login",
             onPress: () => {
-              console.log("Navigating to login");
+              console.log("Navigating to login from cart");
               router.push("/login");
             },
           },
           {
             text: "Continue as Guest",
             onPress: () => {
-              console.log("Navigating to checkout as guest");
+              console.log("Navigating to checkout as guest from cart");
               router.push("/checkout");
             },
           },
@@ -183,7 +186,7 @@ export default function CartScreen() {
       return;
     }
 
-    console.log("Navigating to checkout");
+    console.log("User logged in, navigating to checkout");
     router.push("/checkout");
   };
 
@@ -303,7 +306,7 @@ export default function CartScreen() {
       {cart.length === 0 ? (
         renderEmptyCart()
       ) : (
-        <>
+        <View style={styles.contentContainer}>
           <ScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
@@ -393,8 +396,8 @@ export default function CartScreen() {
               </View>
             </Animated.View>
 
-            {/* Add extra spacing at the bottom to prevent overlap with FloatingTabBar */}
-            <View style={{ height: 120 }} />
+            {/* Add extra spacing at the bottom to account for the footer */}
+            <View style={{ height: 20 }} />
           </ScrollView>
 
           <Animated.View 
@@ -403,11 +406,12 @@ export default function CartScreen() {
               { 
                 backgroundColor: colors.card,
                 opacity: fadeAnim,
+                borderTopColor: colors.border,
               }
             ]}
           >
             <View style={styles.footerContent}>
-              <View>
+              <View style={styles.footerTotalContainer}>
                 <Text style={[styles.footerLabel, { color: colors.text + "80" }]}>
                   Total Amount
                 </Text>
@@ -434,7 +438,7 @@ export default function CartScreen() {
               </Pressable>
             </View>
           </Animated.View>
-        </>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -442,6 +446,9 @@ export default function CartScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  contentContainer: {
     flex: 1,
   },
   scrollView: {
@@ -527,6 +534,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     padding: 20,
     borderRadius: 20,
+    marginBottom: 16,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -604,10 +612,13 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     borderTopWidth: 1,
-    borderTopColor: "rgba(0, 0, 0, 0.1)",
-    // Add extra bottom padding to prevent overlap with FloatingTabBar
-    paddingBottom: Platform.OS === "ios" ? 100 : 90,
+    // Increased padding to ensure button is above FloatingTabBar
+    paddingBottom: Platform.OS === "ios" ? 110 : 100,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -624,8 +635,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    paddingHorizontal: 16,
     paddingTop: 16,
+  },
+  footerTotalContainer: {
+    flex: 1,
   },
   footerLabel: {
     fontSize: 13,
@@ -642,6 +656,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 16,
     gap: 8,
+    marginLeft: 12,
   },
   checkoutButtonText: {
     color: "#FFFFFF",
