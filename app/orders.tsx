@@ -1,6 +1,6 @@
 
 import { useTheme } from "@react-navigation/native";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
