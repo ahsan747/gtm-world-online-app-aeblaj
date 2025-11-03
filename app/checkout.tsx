@@ -1,8 +1,4 @@
 
-import { GlassView } from "expo-glass-effect";
-import { useCart } from "@/contexts/CartContext";
-import { useRouter, Stack } from "expo-router";
-import { IconSymbol } from "@/components/IconSymbol";
 import {
   View,
   Text,
@@ -14,13 +10,18 @@ import {
   Alert,
   KeyboardAvoidingView,
   Animated,
+  ActivityIndicator,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import React, { useState, useRef, useEffect } from "react";
+import { useRouter, Stack } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
+import { GlassView } from "expo-glass-effect";
+import { LinearGradient } from "expo-linear-gradient";
+import { IconSymbol } from "@/components/IconSymbol";
+import { useCart } from "@/contexts/CartContext";
 import * as Haptics from "expo-haptics";
+import React, { useState, useRef, useEffect } from "react";
 
 export default function CheckoutScreen() {
   const { user } = useAuth();
@@ -41,6 +42,7 @@ export default function CheckoutScreen() {
 
   useEffect(() => {
     console.log("Checkout screen mounted");
+    console.log("Cart items:", cart.length);
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -61,30 +63,67 @@ export default function CheckoutScreen() {
   const total = subtotal + shipping + tax;
 
   const handlePlaceOrder = async () => {
-    console.log("Place order button pressed");
+    console.log("=== Place Order Button Pressed ===");
+    console.log("Current cart:", cart);
+    console.log("Total amount:", total);
     
+    // Haptic feedback immediately
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // Validate all fields
     if (!name || !email || !phone || !address || !city || !zipCode || !country) {
-      Alert.alert("Missing Information", "Please fill in all required fields.");
+      console.log("Validation failed: Missing fields");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Missing Information", 
+        "Please fill in all required fields to continue.",
+        [{ text: "OK" }]
+      );
       return;
     }
 
+    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert("Invalid Email", "Please enter a valid email address.");
+      console.log("Validation failed: Invalid email");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Invalid Email", 
+        "Please enter a valid email address.",
+        [{ text: "OK" }]
+      );
       return;
     }
 
+    // Check if cart is empty
+    if (cart.length === 0) {
+      console.log("Validation failed: Empty cart");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Empty Cart", 
+        "Your cart is empty. Please add items before placing an order.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    console.log("All validations passed, processing order...");
     setIsProcessing(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    console.log("Processing order...");
-
-    // Simulate order processing
+    // Simulate order processing with a delay
     setTimeout(() => {
-      console.log("Order processed successfully");
-      setIsProcessing(false);
-      clearCart();
+      console.log("Order processing complete");
       
+      // Success haptic feedback
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      // Clear the cart
+      clearCart();
+      console.log("Cart cleared");
+      
+      setIsProcessing(false);
+      
+      // Show success alert
       Alert.alert(
         "Order Placed Successfully! 🎉",
         `Thank you for your order, ${name}!\n\nOrder Total: $${total.toFixed(2)}\n\nYou will receive a confirmation email at ${email} shortly.`,
@@ -92,11 +131,12 @@ export default function CheckoutScreen() {
           {
             text: "Continue Shopping",
             onPress: () => {
-              console.log("Navigating back to home");
+              console.log("Navigating to home screen");
               router.replace("/(tabs)/(home)");
             },
           },
-        ]
+        ],
+        { cancelable: false }
       );
     }, 2000);
   };
@@ -121,6 +161,7 @@ export default function CheckoutScreen() {
         onChangeText={onChangeText}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
+        editable={!isProcessing}
       />
     </View>
   );
@@ -139,13 +180,16 @@ export default function CheckoutScreen() {
           headerLeft: () => (
             <Pressable
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                console.log("Back button pressed");
-                router.back();
+                if (!isProcessing) {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  console.log("Back button pressed");
+                  router.back();
+                }
               }}
+              disabled={isProcessing}
               style={({ pressed }) => [
                 styles.headerButton,
-                { opacity: pressed ? 0.7 : 1 },
+                { opacity: pressed ? 0.7 : isProcessing ? 0.5 : 1 },
               ]}
             >
               <IconSymbol name="chevron.left" size={24} color={colors.text} />
@@ -162,6 +206,7 @@ export default function CheckoutScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={!isProcessing}
         >
           <Animated.View 
             style={[
@@ -247,6 +292,7 @@ export default function CheckoutScreen() {
                   value={city}
                   onChangeText={setCity}
                   autoCapitalize="words"
+                  editable={!isProcessing}
                 />
               </View>
 
@@ -261,6 +307,7 @@ export default function CheckoutScreen() {
                   value={zipCode}
                   onChangeText={setZipCode}
                   keyboardType="number-pad"
+                  editable={!isProcessing}
                 />
               </View>
             </View>
@@ -360,28 +407,31 @@ export default function CheckoutScreen() {
           ]}
         >
           <Pressable
-            onPress={handlePlaceOrder}
+            onPress={() => {
+              console.log("Place Order button tapped");
+              handlePlaceOrder();
+            }}
             disabled={isProcessing}
             style={({ pressed }) => [
               styles.placeOrderButton,
               {
                 backgroundColor: colors.primary,
-                opacity: isProcessing ? 0.6 : pressed ? 0.8 : 1,
-                transform: [{ scale: pressed ? 0.95 : 1 }],
+                opacity: isProcessing ? 0.7 : pressed ? 0.9 : 1,
               },
             ]}
           >
             {isProcessing ? (
-              <>
+              <View style={styles.processingContainer}>
+                <ActivityIndicator color="#FFFFFF" size="small" />
                 <Text style={styles.placeOrderText}>Processing Order...</Text>
-              </>
+              </View>
             ) : (
-              <>
+              <View style={styles.buttonContent}>
                 <IconSymbol name="checkmark.circle.fill" size={24} color="#FFFFFF" />
                 <Text style={styles.placeOrderText}>
                   Place Order - ${total.toFixed(2)}
                 </Text>
-              </>
+              </View>
             )}
           </Pressable>
         </Animated.View>
@@ -405,6 +455,7 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     marginLeft: 16,
+    padding: 8,
   },
   progressBar: {
     flexDirection: "row",
@@ -557,11 +608,22 @@ const styles = StyleSheet.create({
     }),
   },
   placeOrderButton: {
+    paddingVertical: 18,
+    borderRadius: 16,
+    minHeight: 56,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  buttonContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
-    borderRadius: 16,
+    gap: 12,
+  },
+  processingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 12,
   },
   placeOrderText: {
