@@ -1,4 +1,10 @@
 
+import { useTheme } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter, Stack } from "expo-router";
+import { useAuth } from "@/contexts/AuthContext";
+import { GlassView } from "expo-glass-effect";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   View,
   Text,
@@ -12,133 +18,157 @@ import {
   Animated,
   ActivityIndicator,
 } from "react-native";
-import { useTheme } from "@react-navigation/native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, Stack } from "expo-router";
-import { useAuth } from "@/contexts/AuthContext";
-import { GlassView } from "expo-glass-effect";
-import { LinearGradient } from "expo-linear-gradient";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useCart } from "@/contexts/CartContext";
 import * as Haptics from "expo-haptics";
 import React, { useState, useRef, useEffect } from "react";
+import { createOrder, createUserProfile } from "@/services/database";
 
-export default function CheckoutScreen() {
-  const { user } = useAuth();
+const CheckoutScreen = () => {
   const { colors } = useTheme();
-  const { cart, getCartTotal, clearCart } = useCart();
-  const [name, setName] = useState(user?.displayName || "");
+  const router = useRouter();
+  const { user } = useAuth();
+  const { items, total, clearCart } = useCart();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Shipping information state
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState(user?.email || "");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
+  const [state, setState] = useState("");
   const [zipCode, setZipCode] = useState("");
-  const [country, setCountry] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const router = useRouter();
-  
+  const [country, setCountry] = useState("USA");
+
+  // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
-    console.log("Checkout screen mounted");
-    console.log("Cart items:", cart.length);
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 500,
+        duration: 600,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 500,
+        duration: 600,
         useNativeDriver: true,
       }),
     ]).start();
-  }, []); // Empty dependency array is intentional - animation should only run once on mount
-
-  const subtotal = getCartTotal();
-  const shipping = subtotal > 50 ? 0 : 5.99;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shipping + tax;
+  }, []);
 
   const handlePlaceOrder = async () => {
-    console.log("=== Place Order Button Pressed ===");
-    console.log("Current cart:", cart);
-    console.log("Total amount:", total);
-    
-    // Haptic feedback immediately
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
-    // Validate all fields
-    if (!name || !email || !phone || !address || !city || !zipCode || !country) {
-      console.log("Validation failed: Missing fields");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(
-        "Missing Information", 
-        "Please fill in all required fields to continue.",
-        [{ text: "OK" }]
-      );
+    // Validation
+    if (!fullName.trim()) {
+      Alert.alert("Error", "Please enter your full name");
+      return;
+    }
+    if (!email.trim()) {
+      Alert.alert("Error", "Please enter your email");
+      return;
+    }
+    if (!phone.trim()) {
+      Alert.alert("Error", "Please enter your phone number");
+      return;
+    }
+    if (!address.trim()) {
+      Alert.alert("Error", "Please enter your address");
+      return;
+    }
+    if (!city.trim()) {
+      Alert.alert("Error", "Please enter your city");
+      return;
+    }
+    if (!state.trim()) {
+      Alert.alert("Error", "Please enter your state");
+      return;
+    }
+    if (!zipCode.trim()) {
+      Alert.alert("Error", "Please enter your zip code");
       return;
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      console.log("Validation failed: Invalid email");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(
-        "Invalid Email", 
-        "Please enter a valid email address.",
-        [{ text: "OK" }]
-      );
+    if (items.length === 0) {
+      Alert.alert("Error", "Your cart is empty");
       return;
     }
 
-    // Check if cart is empty
-    if (cart.length === 0) {
-      console.log("Validation failed: Empty cart");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(
-        "Empty Cart", 
-        "Your cart is empty. Please add items before placing an order.",
-        [{ text: "OK" }]
-      );
-      return;
-    }
+    try {
+      setIsProcessing(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    console.log("All validations passed, processing order...");
-    setIsProcessing(true);
+      // Create user profile if it doesn't exist
+      if (user?.uid) {
+        try {
+          await createUserProfile(user.uid, email, fullName);
+        } catch (error) {
+          console.log('User profile may already exist:', error);
+        }
+      }
 
-    // Simulate order processing with a delay
-    setTimeout(() => {
-      console.log("Order processing complete");
-      
-      // Success haptic feedback
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      // Clear the cart
+      // Prepare order data
+      const orderData = {
+        user_id: user?.uid || 'guest',
+        user_email: email,
+        items: items.map(item => ({
+          product_id: item.id,
+          product_name: item.name,
+          product_image: item.image,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        shipping_info: {
+          full_name: fullName,
+          email,
+          phone,
+          address,
+          city,
+          state,
+          zip_code: zipCode,
+          country,
+        },
+        total_amount: total,
+        status: 'pending' as const,
+      };
+
+      console.log('Placing order:', orderData);
+
+      // Save order to Supabase
+      const order = await createOrder(orderData);
+
+      console.log('Order placed successfully:', order);
+
+      // Clear cart
       clearCart();
-      console.log("Cart cleared");
-      
-      setIsProcessing(false);
-      
-      // Show success alert
+
+      // Show success message
       Alert.alert(
         "Order Placed Successfully! 🎉",
-        `Thank you for your order, ${name}!\n\nOrder Total: $${total.toFixed(2)}\n\nYou will receive a confirmation email at ${email} shortly.`,
+        `Your order #${order.id?.substring(0, 8)} has been placed. We'll send you a confirmation email at ${email}.`,
         [
           {
-            text: "Continue Shopping",
+            text: "OK",
             onPress: () => {
-              console.log("Navigating to home screen");
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               router.replace("/(tabs)/(home)");
             },
           },
-        ],
-        { cancelable: false }
+        ]
       );
-    }, 2000);
+    } catch (error: any) {
+      console.error("Error placing order:", error);
+      Alert.alert(
+        "Order Failed",
+        error.message || "There was an error placing your order. Please try again or contact support.",
+        [{ text: "OK" }]
+      );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const renderInput = (
@@ -149,16 +179,21 @@ export default function CheckoutScreen() {
     keyboardType: any = "default",
     autoCapitalize: any = "words"
   ) => (
-    <View style={styles.inputGroup}>
-      <Text style={[styles.label, { color: colors.text }]}>
-        {label} *
-      </Text>
+    <View style={styles.inputContainer}>
+      <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
       <TextInput
-        style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-        placeholder={placeholder}
-        placeholderTextColor={colors.text + "60"}
+        style={[
+          styles.input,
+          {
+            backgroundColor: colors.card,
+            color: colors.text,
+            borderColor: colors.border,
+          },
+        ]}
         value={value}
         onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.text + "60"}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         editable={!isProcessing}
@@ -167,278 +202,144 @@ export default function CheckoutScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <Stack.Screen
         options={{
           headerShown: true,
           title: "Checkout",
           headerStyle: {
-            backgroundColor: Platform.OS === "android" ? colors.card : "transparent",
+            backgroundColor: colors.card,
           },
-          headerTransparent: Platform.OS === "ios",
-          headerBlurEffect: "regular",
-          headerLeft: () => (
-            <Pressable
-              onPress={() => {
-                if (!isProcessing) {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  console.log("Back button pressed");
-                  router.back();
-                }
-              }}
-              disabled={isProcessing}
-              style={({ pressed }) => [
-                styles.headerButton,
-                { opacity: pressed ? 0.7 : isProcessing ? 0.5 : 1 },
-              ]}
-            >
-              <IconSymbol name="chevron.left" size={24} color={colors.text} />
-            </Pressable>
-          ),
+          headerTintColor: colors.text,
+          headerShadowVisible: false,
         }}
       />
 
       <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          scrollEnabled={!isProcessing}
         >
-          <Animated.View 
+          <Animated.View
             style={[
-              styles.progressBar,
+              styles.content,
               {
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
               },
             ]}
           >
-            <View style={styles.progressStep}>
-              <View style={[styles.progressCircle, { backgroundColor: colors.primary }]}>
-                <IconSymbol name="cart" size={16} color="#FFFFFF" />
-              </View>
-              <Text style={[styles.progressText, { color: colors.text }]}>Cart</Text>
-            </View>
-            <View style={[styles.progressLine, { backgroundColor: colors.primary }]} />
-            <View style={styles.progressStep}>
-              <View style={[styles.progressCircle, { backgroundColor: colors.primary }]}>
-                <IconSymbol name="doc.text" size={16} color="#FFFFFF" />
-              </View>
-              <Text style={[styles.progressText, { color: colors.text }]}>Details</Text>
-            </View>
-            <View style={[styles.progressLine, { backgroundColor: colors.border }]} />
-            <View style={styles.progressStep}>
-              <View style={[styles.progressCircle, { backgroundColor: colors.border }]}>
-                <IconSymbol name="checkmark" size={16} color={colors.text} />
-              </View>
-              <Text style={[styles.progressText, { color: colors.text + "80" }]}>Complete</Text>
-            </View>
-          </Animated.View>
-
-          <Animated.View 
-            style={[
-              styles.section, 
-              { 
-                backgroundColor: colors.card,
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              }
-            ]}
-          >
-            <View style={styles.sectionHeader}>
-              <IconSymbol name="person.circle" size={24} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Contact Information
-              </Text>
-            </View>
-            
-            {renderInput("Full Name", name, setName, "John Doe")}
-            {renderInput("Email Address", email, setEmail, "john@example.com", "email-address", "none")}
-            {renderInput("Phone Number", phone, setPhone, "+1 (555) 123-4567", "phone-pad")}
-          </Animated.View>
-
-          <Animated.View 
-            style={[
-              styles.section, 
-              { 
-                backgroundColor: colors.card,
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              }
-            ]}
-          >
-            <View style={styles.sectionHeader}>
-              <IconSymbol name="location.circle" size={24} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Shipping Address
-              </Text>
-            </View>
-            
-            {renderInput("Street Address", address, setAddress, "123 Main Street")}
-
-            <View style={styles.row}>
-              <View style={[styles.inputGroup, styles.halfWidth]}>
-                <Text style={[styles.label, { color: colors.text }]}>
-                  City *
-                </Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                  placeholder="New York"
-                  placeholderTextColor={colors.text + "60"}
-                  value={city}
-                  onChangeText={setCity}
-                  autoCapitalize="words"
-                  editable={!isProcessing}
-                />
-              </View>
-
-              <View style={[styles.inputGroup, styles.halfWidth]}>
-                <Text style={[styles.label, { color: colors.text }]}>
-                  ZIP Code *
-                </Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                  placeholder="10001"
-                  placeholderTextColor={colors.text + "60"}
-                  value={zipCode}
-                  onChangeText={setZipCode}
-                  keyboardType="number-pad"
-                  editable={!isProcessing}
-                />
-              </View>
-            </View>
-
-            {renderInput("Country", country, setCountry, "United States")}
-          </Animated.View>
-
-          <Animated.View 
-            style={[
-              styles.section, 
-              { 
-                backgroundColor: colors.card,
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              }
-            ]}
-          >
-            <View style={styles.sectionHeader}>
-              <IconSymbol name="doc.text" size={24} color={colors.primary} />
+            {/* Order Summary */}
+            <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Order Summary
               </Text>
-            </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: colors.text }]}>
-                Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)
-              </Text>
-              <Text style={[styles.summaryValue, { color: colors.text }]}>
-                ${subtotal.toFixed(2)}
-              </Text>
-            </View>
-            
-            <View style={styles.summaryRow}>
-              <View style={styles.shippingLabelContainer}>
-                <Text style={[styles.summaryLabel, { color: colors.text }]}>
-                  Shipping
-                </Text>
-                {shipping === 0 && (
-                  <View style={styles.freeBadge}>
-                    <Text style={styles.freeBadgeText}>FREE</Text>
+              <GlassView
+                style={[styles.summaryCard, { backgroundColor: colors.card }]}
+                intensity={Platform.OS === "ios" ? 20 : 0}
+              >
+                {items.map((item, index) => (
+                  <View key={item.id} style={styles.summaryItem}>
+                    <Text style={[styles.itemName, { color: colors.text }]}>
+                      {item.name} x {item.quantity}
+                    </Text>
+                    <Text style={[styles.itemPrice, { color: colors.text }]}>
+                      ${(item.price * item.quantity).toFixed(2)}
+                    </Text>
                   </View>
-                )}
-              </View>
-              <Text style={[styles.summaryValue, { color: shipping === 0 ? "#34C759" : colors.text }]}>
-                {shipping === 0 ? "$0.00" : `$${shipping.toFixed(2)}`}
-              </Text>
+                ))}
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View style={styles.summaryItem}>
+                  <Text style={[styles.totalLabel, { color: colors.text }]}>
+                    Total
+                  </Text>
+                  <Text style={[styles.totalAmount, { color: colors.primary }]}>
+                    ${total.toFixed(2)}
+                  </Text>
+                </View>
+              </GlassView>
             </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: colors.text }]}>
-                Tax (8%)
+
+            {/* Shipping Information */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Shipping Information
               </Text>
-              <Text style={[styles.summaryValue, { color: colors.text }]}>
-                ${tax.toFixed(2)}
-              </Text>
+              {renderInput("Full Name", fullName, setFullName, "John Doe")}
+              {renderInput(
+                "Email",
+                email,
+                setEmail,
+                "john@example.com",
+                "email-address",
+                "none"
+              )}
+              {renderInput(
+                "Phone",
+                phone,
+                setPhone,
+                "+1 (555) 123-4567",
+                "phone-pad",
+                "none"
+              )}
+              {renderInput(
+                "Address",
+                address,
+                setAddress,
+                "123 Main Street",
+                "default",
+                "words"
+              )}
+              {renderInput("City", city, setCity, "New York")}
+              {renderInput("State", state, setState, "NY")}
+              {renderInput(
+                "Zip Code",
+                zipCode,
+                setZipCode,
+                "10001",
+                "number-pad",
+                "none"
+              )}
+              {renderInput("Country", country, setCountry, "USA")}
             </View>
-            
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            
-            <View style={styles.summaryRow}>
-              <Text style={[styles.totalLabel, { color: colors.text }]}>
-                Total
-              </Text>
-              <Text style={[styles.totalValue, { color: colors.primary }]}>
-                ${total.toFixed(2)}
-              </Text>
+
+            {/* Place Order Button */}
+            <View style={styles.buttonContainer}>
+              <Pressable
+                onPress={handlePlaceOrder}
+                disabled={isProcessing}
+                style={({ pressed }) => [
+                  styles.placeOrderButton,
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <LinearGradient
+                  colors={["#FF6B9D", "#C06C84"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gradient}
+                >
+                  {isProcessing ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <>
+                      <IconSymbol name="checkmark.circle.fill" size={24} color="#FFFFFF" />
+                      <Text style={styles.placeOrderText}>Place Order</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </Pressable>
             </View>
           </Animated.View>
-
-          <Animated.View 
-            style={[
-              styles.infoBox,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              },
-            ]}
-          >
-            <IconSymbol name="lock.shield" size={20} color={colors.primary} />
-            <Text style={[styles.infoText, { color: colors.text }]}>
-              Your order will be processed securely. You&apos;ll receive a confirmation email shortly.
-            </Text>
-          </Animated.View>
-
-          {/* Add extra spacing at the bottom for better scrolling */}
-          <View style={{ height: 40 }} />
         </ScrollView>
-
-        <Animated.View 
-          style={[
-            styles.footer, 
-            { 
-              backgroundColor: colors.card,
-              opacity: fadeAnim,
-            }
-          ]}
-        >
-          <Pressable
-            onPress={() => {
-              console.log("Place Order button tapped");
-              handlePlaceOrder();
-            }}
-            disabled={isProcessing}
-            style={({ pressed }) => [
-              styles.placeOrderButton,
-              {
-                backgroundColor: colors.primary,
-                opacity: isProcessing ? 0.7 : pressed ? 0.9 : 1,
-              },
-            ]}
-          >
-            {isProcessing ? (
-              <View style={styles.processingContainer}>
-                <ActivityIndicator color="#FFFFFF" size="small" />
-                <Text style={styles.placeOrderText}>Processing Order...</Text>
-              </View>
-            ) : (
-              <View style={styles.buttonContent}>
-                <IconSymbol name="checkmark.circle.fill" size={24} color="#FFFFFF" />
-                <Text style={styles.placeOrderText}>
-                  Place Order - ${total.toFixed(2)}
-                </Text>
-              </View>
-            )}
-          </Pressable>
-        </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -451,116 +352,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  headerButton: {
-    marginLeft: 16,
-    padding: 8,
-  },
-  progressBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  progressStep: {
-    alignItems: "center",
-    gap: 8,
-  },
-  progressCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  progressText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  progressLine: {
-    width: 40,
-    height: 2,
-    marginHorizontal: 8,
+  content: {
+    paddingTop: 20,
   },
   section: {
-    marginHorizontal: 16,
-    marginTop: 16,
+    marginBottom: 30,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 16,
+  },
+  summaryCard: {
+    borderRadius: 16,
     padding: 20,
-    borderRadius: 20,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
       },
       android: {
         elevation: 4,
       },
     }),
   },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  input: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    fontSize: 16,
-    borderWidth: 1,
-  },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  halfWidth: {
-    flex: 1,
-  },
-  summaryRow: {
+  summaryItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
   },
-  summaryLabel: {
-    fontSize: 15,
+  itemName: {
+    fontSize: 16,
+    flex: 1,
   },
-  shippingLabelContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  freeBadge: {
-    backgroundColor: "#34C759",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  freeBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "bold",
-  },
-  summaryValue: {
-    fontSize: 15,
+  itemPrice: {
+    fontSize: 16,
     fontWeight: "600",
   },
   divider: {
@@ -569,66 +401,62 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
-  totalValue: {
+  totalAmount: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontWeight: "800",
   },
-  infoBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginHorizontal: 16,
-    marginTop: 16,
+  inputContainer: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  input: {
+    borderRadius: 12,
     padding: 16,
+    fontSize: 16,
+    borderWidth: 1,
+  },
+  buttonContainer: {
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  placeOrderButton: {
     borderRadius: 16,
-    backgroundColor: "rgba(0, 122, 255, 0.1)",
-    gap: 12,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  footer: {
-    padding: 16,
-    paddingBottom: Platform.OS === "ios" ? 32 : 16,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0, 0, 0, 0.1)",
+    overflow: "hidden",
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
+        shadowColor: "#FF6B9D",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
       },
       android: {
         elevation: 8,
       },
     }),
   },
-  placeOrderButton: {
+  buttonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
+  gradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 18,
-    borderRadius: 16,
-    minHeight: 56,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  buttonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  processingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: 32,
     gap: 12,
   },
   placeOrderText: {
     color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
 });
+
+export default CheckoutScreen;
