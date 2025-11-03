@@ -22,7 +22,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { useCart } from "@/contexts/CartContext";
 import * as Haptics from "expo-haptics";
 import React, { useState, useRef, useEffect } from "react";
-import { createOrder, createUserProfile } from "@/services/database";
+import { createOrder, createUserProfile, getUserProfile } from "@/services/database";
 
 const CheckoutScreen = () => {
   const { colors } = useTheme();
@@ -30,6 +30,7 @@ const CheckoutScreen = () => {
   const { user } = useAuth();
   const { cart, getCartTotal, clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
   // Shipping information state
   const [fullName, setFullName] = useState("");
@@ -58,43 +59,95 @@ const CheckoutScreen = () => {
         useNativeDriver: true,
       }),
     ]).start();
+
+    loadUserProfile();
   }, []);
 
+  const loadUserProfile = async () => {
+    if (!user) {
+      console.log('No user logged in, skipping profile load');
+      setLoadingProfile(false);
+      return;
+    }
+
+    try {
+      console.log('Loading user profile for checkout');
+      const profile = await getUserProfile(user.id);
+      
+      if (profile) {
+        console.log('Profile loaded, pre-filling form');
+        setFullName(profile.display_name || "");
+        setPhone(profile.phone || "");
+        setAddress(profile.address || "");
+        setCity(profile.city || "");
+        setState(profile.state || "");
+        setZipCode(profile.zip_code || "");
+        setCountry(profile.country || "USA");
+      } else {
+        console.log('No profile found, using user metadata');
+        setFullName(user.user_metadata?.display_name || "");
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
   const handlePlaceOrder = async () => {
-    console.log('Place order button pressed');
+    console.log('=== PLACE ORDER BUTTON PRESSED ===');
+    console.log('Cart items:', cart.length);
+    console.log('User:', user ? user.email : 'Guest');
     
     // Validation
     if (!fullName.trim()) {
       Alert.alert("Error", "Please enter your full name");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
     if (!email.trim()) {
       Alert.alert("Error", "Please enter your email");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert("Error", "Please enter a valid email address");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+    
     if (!phone.trim()) {
       Alert.alert("Error", "Please enter your phone number");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
     if (!address.trim()) {
       Alert.alert("Error", "Please enter your address");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
     if (!city.trim()) {
       Alert.alert("Error", "Please enter your city");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
     if (!state.trim()) {
       Alert.alert("Error", "Please enter your state");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
     if (!zipCode.trim()) {
       Alert.alert("Error", "Please enter your zip code");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
     if (cart.length === 0) {
       Alert.alert("Error", "Your cart is empty");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
@@ -102,21 +155,24 @@ const CheckoutScreen = () => {
       setIsProcessing(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      console.log('Creating user profile if needed...');
-      // Create user profile if it doesn't exist
-      if (user?.uid) {
+      console.log('Creating/updating user profile...');
+      // Create or update user profile
+      if (user?.id) {
         try {
-          await createUserProfile(user.uid, email, fullName);
-        } catch (error) {
-          console.log('User profile may already exist:', error);
+          await createUserProfile(user.id, email, fullName);
+        } catch (error: any) {
+          console.log('User profile may already exist:', error.message);
         }
       }
 
-      const total = getCartTotal();
+      const subtotal = getCartTotal();
+      const shipping = subtotal > 50 ? 0 : 5.99;
+      const tax = subtotal * 0.08;
+      const total = subtotal + shipping + tax;
       
       // Prepare order data
       const orderData = {
-        user_id: user?.uid || 'guest',
+        user_id: user?.id || 'guest',
         user_email: email,
         items: cart.map(item => ({
           product_id: item.product.id,
@@ -139,25 +195,34 @@ const CheckoutScreen = () => {
         status: 'pending' as const,
       };
 
-      console.log('Placing order with data:', orderData);
+      console.log('Placing order with Supabase...');
+      console.log('Order data:', JSON.stringify(orderData, null, 2));
 
       // Save order to Supabase
       const order = await createOrder(orderData);
 
-      console.log('Order placed successfully:', order);
+      console.log('Order placed successfully:', order.id);
 
       // Clear cart
       clearCart();
 
       // Show success message
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         "Order Placed Successfully! 🎉",
         `Your order #${order.id?.substring(0, 8)} has been placed. We'll send you a confirmation email at ${email}.`,
         [
           {
-            text: "OK",
+            text: "View Orders",
             onPress: () => {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              console.log('Navigating to orders screen');
+              router.replace("/orders");
+            },
+          },
+          {
+            text: "Continue Shopping",
+            onPress: () => {
+              console.log('Navigating to home screen');
               router.replace("/(tabs)/(home)");
             },
           },
@@ -165,9 +230,16 @@ const CheckoutScreen = () => {
       );
     } catch (error: any) {
       console.error("Error placing order:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
+      
+      let errorMessage = "There was an error placing your order. Please try again.";
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
       Alert.alert(
         "Order Failed",
-        error.message || "There was an error placing your order. Please try again or contact support.",
+        errorMessage,
         [{ text: "OK" }]
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -201,7 +273,7 @@ const CheckoutScreen = () => {
         placeholderTextColor={colors.text + "60"}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
-        editable={!isProcessing}
+        editable={!isProcessing && !loadingProfile}
       />
     </View>
   );
@@ -210,6 +282,44 @@ const CheckoutScreen = () => {
   const shipping = subtotal > 0 ? (subtotal > 50 ? 0 : 5.99) : 0;
   const tax = subtotal * 0.08;
   const total = subtotal + shipping + tax;
+
+  if (cart.length === 0) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            title: "Checkout",
+            headerStyle: {
+              backgroundColor: colors.card,
+            },
+            headerTintColor: colors.text,
+          }}
+        />
+        <View style={styles.emptyContainer}>
+          <IconSymbol name="cart" size={80} color={colors.text + "40"} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            Your cart is empty
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: colors.text + "80" }]}>
+            Add some products before checking out
+          </Text>
+          <Pressable
+            onPress={() => router.replace("/(tabs)/(home)")}
+            style={({ pressed }) => [
+              styles.shopButton,
+              {
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+          >
+            <Text style={styles.shopButtonText}>Start Shopping</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -304,51 +414,66 @@ const CheckoutScreen = () => {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Shipping Information
               </Text>
-              {renderInput("Full Name", fullName, setFullName, "John Doe")}
-              {renderInput(
-                "Email",
-                email,
-                setEmail,
-                "john@example.com",
-                "email-address",
-                "none"
+              {loadingProfile ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={[styles.loadingText, { color: colors.text }]}>
+                    Loading your information...
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  {renderInput("Full Name", fullName, setFullName, "John Doe")}
+                  {renderInput(
+                    "Email",
+                    email,
+                    setEmail,
+                    "john@example.com",
+                    "email-address",
+                    "none"
+                  )}
+                  {renderInput(
+                    "Phone",
+                    phone,
+                    setPhone,
+                    "+1 (555) 123-4567",
+                    "phone-pad",
+                    "none"
+                  )}
+                  {renderInput(
+                    "Address",
+                    address,
+                    setAddress,
+                    "123 Main Street",
+                    "default",
+                    "words"
+                  )}
+                  {renderInput("City", city, setCity, "New York")}
+                  {renderInput("State", state, setState, "NY")}
+                  {renderInput(
+                    "Zip Code",
+                    zipCode,
+                    setZipCode,
+                    "10001",
+                    "number-pad",
+                    "none"
+                  )}
+                  {renderInput("Country", country, setCountry, "USA")}
+                </>
               )}
-              {renderInput(
-                "Phone",
-                phone,
-                setPhone,
-                "+1 (555) 123-4567",
-                "phone-pad",
-                "none"
-              )}
-              {renderInput(
-                "Address",
-                address,
-                setAddress,
-                "123 Main Street",
-                "default",
-                "words"
-              )}
-              {renderInput("City", city, setCity, "New York")}
-              {renderInput("State", state, setState, "NY")}
-              {renderInput(
-                "Zip Code",
-                zipCode,
-                setZipCode,
-                "10001",
-                "number-pad",
-                "none"
-              )}
-              {renderInput("Country", country, setCountry, "USA")}
             </View>
 
             {/* Place Order Button */}
             <View style={styles.buttonContainer}>
               <Pressable
-                onPress={handlePlaceOrder}
-                disabled={isProcessing}
+                onPress={() => {
+                  console.log('=== PLACE ORDER BUTTON TAPPED ===');
+                  handlePlaceOrder();
+                }}
+                disabled={isProcessing || loadingProfile}
                 style={({ pressed }) => [
                   styles.placeOrderButton,
+                  (isProcessing || loadingProfile) && styles.buttonDisabled,
                   pressed && styles.buttonPressed,
                 ]}
               >
@@ -359,7 +484,10 @@ const CheckoutScreen = () => {
                   style={styles.gradient}
                 >
                   {isProcessing ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
+                    <>
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                      <Text style={styles.placeOrderText}>Processing...</Text>
+                    </>
                   ) : (
                     <>
                       <IconSymbol name="checkmark.circle.fill" size={24} color="#FFFFFF" />
@@ -449,6 +577,16 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "800",
   },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+  },
   inputContainer: {
     marginBottom: 16,
   },
@@ -482,6 +620,9 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
   buttonPressed: {
     opacity: 0.8,
     transform: [{ scale: 0.98 }],
@@ -498,6 +639,33 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "700",
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 40,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 32,
+  },
+  shopButton: {
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+  },
+  shopButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

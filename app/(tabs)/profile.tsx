@@ -7,6 +7,7 @@ import { GlassView } from "expo-glass-effect";
 import { LinearGradient } from "expo-linear-gradient";
 import { IconSymbol } from "@/components/IconSymbol";
 import React from "react";
+import * as Haptics from "expo-haptics";
 import {
   View,
   Text,
@@ -16,14 +17,38 @@ import {
   Pressable,
   Alert,
 } from "react-native";
-import * as Haptics from "expo-haptics";
 
-const ProfileScreen = () => {
-  const router = useRouter();
+const menuItems = [
+  {
+    id: "edit-profile",
+    title: "Edit Profile",
+    icon: "person.circle",
+    route: "/edit-profile",
+    color: "#007AFF",
+  },
+  {
+    id: "orders",
+    title: "My Orders",
+    icon: "bag",
+    route: "/orders",
+    color: "#FF6B9D",
+  },
+  {
+    id: "contact",
+    title: "Contact Us",
+    icon: "envelope",
+    route: "/contact",
+    color: "#34C759",
+  },
+];
+
+export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const { colors } = useTheme();
 
   const handleLogout = () => {
+    console.log('Logout button pressed');
     Alert.alert(
       "Logout",
       "Are you sure you want to logout?",
@@ -37,11 +62,13 @@ const ProfileScreen = () => {
           style: "destructive",
           onPress: async () => {
             try {
+              console.log('Logging out user...');
               await logout();
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              router.replace("/login");
+              console.log('Logout successful, navigating to home');
+              router.replace("/(tabs)/(home)/");
             } catch (error) {
-              console.error("Logout error:", error);
+              console.error('Logout error:', error);
               Alert.alert("Error", "Failed to logout. Please try again.");
             }
           },
@@ -50,120 +77,43 @@ const ProfileScreen = () => {
     );
   };
 
-  const menuItems = [
-    {
-      icon: "person.crop.circle.fill",
-      title: "Edit Profile",
-      subtitle: "Update your personal information",
-      onPress: () => {
+  const renderMenuItem = (item: typeof menuItems[0], index: number) => (
+    <Pressable
+      key={item.id}
+      onPress={() => {
+        console.log('Menu item pressed:', item.title);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push("/edit-profile");
-      },
-      requiresAuth: true,
-    },
-    {
-      icon: "bag.fill",
-      title: "My Orders",
-      subtitle: "View your order history",
-      onPress: () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push("/orders");
-      },
-      requiresAuth: true,
-    },
-    {
-      icon: "envelope.fill",
-      title: "Contact Us",
-      subtitle: "Get in touch with support",
-      onPress: () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push("/contact");
-      },
-      requiresAuth: false,
-    },
-    {
-      icon: "bell.fill",
-      title: "Notifications",
-      subtitle: "Manage your notifications",
-      onPress: () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        Alert.alert("Coming Soon", "Notification settings will be available soon!");
-      },
-      requiresAuth: false,
-    },
-    {
-      icon: "gearshape.fill",
-      title: "Settings",
-      subtitle: "App preferences and settings",
-      onPress: () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        Alert.alert("Coming Soon", "Settings will be available soon!");
-      },
-      requiresAuth: false,
-    },
-    {
-      icon: "questionmark.circle.fill",
-      title: "Help & Support",
-      subtitle: "FAQs and customer support",
-      onPress: () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        Alert.alert("Coming Soon", "Help center will be available soon!");
-      },
-      requiresAuth: false,
-    },
-    {
-      icon: "info.circle.fill",
-      title: "About",
-      subtitle: "App version and information",
-      onPress: () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        Alert.alert("GTM World Online", "Version 1.0.0\n\nYour trusted cosmetics store");
-      },
-      requiresAuth: false,
-    },
-  ];
-
-  const renderMenuItem = (item: typeof menuItems[0], index: number) => {
-    // Skip items that require auth if user is not logged in
-    if (item.requiresAuth && !user) {
-      return null;
-    }
-
-    return (
-      <Pressable
-        key={index}
-        onPress={item.onPress}
-        style={({ pressed }) => [
-          styles.menuItem,
-          pressed && styles.menuItemPressed,
-        ]}
-      >
-        <GlassView
-          style={[styles.menuItemContent, { backgroundColor: colors.card }]}
-          intensity={Platform.OS === "ios" ? 20 : 0}
-        >
-          <View style={[styles.iconContainer, { backgroundColor: colors.primary + "20" }]}>
-            <IconSymbol name={item.icon} size={24} color={colors.primary} />
-          </View>
-          <View style={styles.menuItemText}>
-            <Text style={[styles.menuItemTitle, { color: colors.text }]}>
-              {item.title}
-            </Text>
-            <Text style={[styles.menuItemSubtitle, { color: colors.text + "80" }]}>
-              {item.subtitle}
-            </Text>
-          </View>
-          <IconSymbol name="chevron.right" size={20} color={colors.text + "60"} />
-        </GlassView>
-      </Pressable>
-    );
-  };
+        router.push(item.route as any);
+      }}
+      style={({ pressed }) => [
+        styles.menuItem,
+        {
+          backgroundColor: colors.card,
+          opacity: pressed ? 0.7 : 1,
+        },
+      ]}
+    >
+      <View style={[styles.menuIconContainer, { backgroundColor: item.color + "20" }]}>
+        <IconSymbol name={item.icon as any} size={24} color={item.color} />
+      </View>
+      <Text style={[styles.menuItemText, { color: colors.text }]}>
+        {item.title}
+      </Text>
+      <IconSymbol name="chevron.right" size={20} color={colors.text + "60"} />
+    </Pressable>
+  );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
       <Stack.Screen
         options={{
-          headerShown: false,
+          headerShown: true,
+          title: "Profile",
+          headerStyle: {
+            backgroundColor: Platform.OS === "android" ? colors.card : "transparent",
+          },
+          headerTransparent: Platform.OS === "ios",
+          headerBlurEffect: "regular",
         }}
       />
 
@@ -172,79 +122,90 @@ const ProfileScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile Header */}
-        <View style={styles.header}>
+        <View style={styles.profileHeader}>
           <LinearGradient
-            colors={["#FF6B9D", "#C06C84"]}
+            colors={["#FF6B9D", "#C06C84", "#8B5A8E"]}
+            style={styles.avatarGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.avatarGradient}
           >
             <IconSymbol name="person.fill" size={48} color="#FFFFFF" />
           </LinearGradient>
+          
           <Text style={[styles.userName, { color: colors.text }]}>
-            {user?.displayName || user?.email?.split("@")[0] || "Guest User"}
+            {user?.user_metadata?.display_name || user?.email?.split('@')[0] || "Guest User"}
           </Text>
-          <Text style={[styles.userEmail, { color: colors.text + "80" }]}>
-            {user?.email || "Not logged in"}
-          </Text>
+          
+          {user?.email && (
+            <Text style={[styles.userEmail, { color: colors.text + "80" }]}>
+              {user.email}
+            </Text>
+          )}
+          
+          {!user && (
+            <View style={styles.loginPrompt}>
+              <Text style={[styles.loginPromptText, { color: colors.text + "80" }]}>
+                Sign in to access all features
+              </Text>
+              <Pressable
+                onPress={() => {
+                  console.log('Login button pressed from profile');
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push("/login");
+                }}
+                style={({ pressed }) => [
+                  styles.loginButton,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ]}
+              >
+                <Text style={styles.loginButtonText}>Sign In</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
 
-        {/* Menu Items */}
-        <View style={styles.menuContainer}>
+        <View style={styles.menuSection}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Account
+          </Text>
           {menuItems.map((item, index) => renderMenuItem(item, index))}
         </View>
 
-        {/* Logout Button */}
         {user && (
-          <View style={styles.logoutContainer}>
+          <View style={styles.logoutSection}>
             <Pressable
               onPress={handleLogout}
               style={({ pressed }) => [
                 styles.logoutButton,
-                pressed && styles.buttonPressed,
+                {
+                  backgroundColor: colors.card,
+                  opacity: pressed ? 0.7 : 1,
+                },
               ]}
             >
-              <GlassView
-                style={[styles.logoutButtonContent, { backgroundColor: "#FF3B3020" }]}
-                intensity={Platform.OS === "ios" ? 20 : 0}
-              >
-                <IconSymbol name="arrow.right.square.fill" size={24} color="#FF3B30" />
-                <Text style={styles.logoutText}>Logout</Text>
-              </GlassView>
+              <IconSymbol name="arrow.right.square" size={24} color="#FF3B30" />
+              <Text style={[styles.logoutText, { color: "#FF3B30" }]}>
+                Logout
+              </Text>
             </Pressable>
           </View>
         )}
 
-        {/* Login Button (if not logged in) */}
-        {!user && (
-          <View style={styles.loginContainer}>
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                router.push("/login");
-              }}
-              style={({ pressed }) => [
-                styles.loginButton,
-                pressed && styles.buttonPressed,
-              ]}
-            >
-              <LinearGradient
-                colors={["#FF6B9D", "#C06C84"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.loginGradient}
-              >
-                <IconSymbol name="person.fill" size={24} color="#FFFFFF" />
-                <Text style={styles.loginText}>Login</Text>
-              </LinearGradient>
-            </Pressable>
-          </View>
-        )}
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: colors.text + "60" }]}>
+            GTM World Online
+          </Text>
+          <Text style={[styles.footerText, { color: colors.text + "60" }]}>
+            Version 1.0.0
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -256,24 +217,25 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  header: {
+  profileHeader: {
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: 32,
     paddingHorizontal: 20,
+    marginTop: Platform.OS === "ios" ? 60 : 20,
   },
   avatarGradient: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     marginBottom: 16,
     ...Platform.select({
       ios: {
-        shadowColor: "#FF6B9D",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
       },
       android: {
         elevation: 8,
@@ -288,109 +250,97 @@ const styles = StyleSheet.create({
   userEmail: {
     fontSize: 16,
   },
-  menuContainer: {
+  loginPrompt: {
+    alignItems: "center",
+    marginTop: 16,
+  },
+  loginPromptText: {
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  loginButton: {
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  loginButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  menuSection: {
     paddingHorizontal: 20,
-    gap: 12,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 12,
   },
   menuItem: {
-    marginBottom: 0,
-  },
-  menuItemPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
-  },
-  menuItemContent: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
     borderRadius: 16,
-    gap: 16,
+    marginBottom: 12,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 8,
+        shadowRadius: 4,
       },
       android: {
         elevation: 2,
       },
     }),
   },
-  iconContainer: {
+  menuIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 12,
-    justifyContent: "center",
+    borderRadius: 24,
     alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
   },
   menuItemText: {
     flex: 1,
-  },
-  menuItemTitle: {
     fontSize: 16,
     fontWeight: "600",
-    marginBottom: 2,
   },
-  menuItemSubtitle: {
-    fontSize: 13,
-  },
-  logoutContainer: {
+  logoutSection: {
     paddingHorizontal: 20,
-    marginTop: 32,
+    marginBottom: 24,
   },
   logoutButton: {
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  buttonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
-  },
-  logoutButtonContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
-    gap: 12,
-  },
-  logoutText: {
-    color: "#FF3B30",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  loginContainer: {
-    paddingHorizontal: 20,
-    marginTop: 32,
-  },
-  loginButton: {
     borderRadius: 16,
-    overflow: "hidden",
+    gap: 12,
     ...Platform.select({
       ios: {
-        shadowColor: "#FF6B9D",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 8,
+        elevation: 2,
       },
     }),
   },
-  loginGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    gap: 12,
-  },
-  loginText: {
-    color: "#FFFFFF",
+  logoutText: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
+  },
+  footer: {
+    alignItems: "center",
+    paddingVertical: 24,
+  },
+  footerText: {
+    fontSize: 12,
+    marginBottom: 4,
   },
 });
-
-export default ProfileScreen;

@@ -18,19 +18,18 @@ import {
   Animated,
   ActivityIndicator,
 } from "react-native";
+import { getUserProfile, updateUserProfile, createUserProfile } from "@/services/database";
 import { IconSymbol } from "@/components/IconSymbol";
 import * as Haptics from "expo-haptics";
 import React, { useState, useRef, useEffect } from "react";
-import { getUserProfile, updateUserProfile, createUserProfile } from "@/services/database";
 
-const EditProfileScreen = () => {
+export default function EditProfileScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // Profile state
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -39,37 +38,31 @@ const EditProfileScreen = () => {
   const [zipCode, setZipCode] = useState("");
   const [country, setCountry] = useState("USA");
 
-  // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
     loadProfile();
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
   }, []);
 
   const loadProfile = async () => {
-    if (!user?.uid) {
-      setIsLoading(false);
+    if (!user) {
+      console.log('No user logged in');
+      setLoading(false);
       return;
     }
 
     try {
-      console.log('Loading user profile...');
-      const profile = await getUserProfile(user.uid);
+      console.log('Loading user profile for:', user.id);
+      const profile = await getUserProfile(user.id);
       
       if (profile) {
+        console.log('Profile loaded successfully');
         setDisplayName(profile.display_name || "");
         setPhone(profile.phone || "");
         setAddress(profile.address || "");
@@ -78,40 +71,34 @@ const EditProfileScreen = () => {
         setZipCode(profile.zip_code || "");
         setCountry(profile.country || "USA");
       } else {
-        // Set default display name from Firebase user
-        setDisplayName(user.displayName || "");
+        console.log('No profile found, using user metadata');
+        setDisplayName(user.user_metadata?.display_name || user.email?.split('@')[0] || "");
       }
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!user?.uid) {
+    if (!user) {
       Alert.alert("Error", "You must be logged in to update your profile");
       return;
     }
 
-    // Validation
     if (!displayName.trim()) {
-      Alert.alert("Error", "Please enter your display name");
+      Alert.alert("Error", "Please enter your name");
       return;
     }
 
+    setSaving(true);
     try {
-      setIsSaving(true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-      console.log('Saving profile...');
-
-      // Check if profile exists
-      const existingProfile = await getUserProfile(user.uid);
-
-      if (existingProfile) {
-        // Update existing profile
-        await updateUserProfile(user.uid, {
+      console.log('Saving profile for user:', user.id);
+      
+      // Try to update existing profile
+      try {
+        await updateUserProfile(user.id, {
           display_name: displayName,
           phone,
           address,
@@ -120,45 +107,46 @@ const EditProfileScreen = () => {
           zip_code: zipCode,
           country,
         });
-      } else {
-        // Create new profile
-        await createUserProfile(user.uid, user.email || "", displayName);
-        // Then update with additional fields
-        await updateUserProfile(user.uid, {
-          phone,
-          address,
-          city,
-          state,
-          zip_code: zipCode,
-          country,
-        });
+        console.log('Profile updated successfully');
+      } catch (updateError: any) {
+        // If profile doesn't exist, create it
+        if (updateError.message?.includes('No rows found')) {
+          console.log('Profile not found, creating new profile');
+          await createUserProfile(user.id, user.email || '', displayName);
+          await updateUserProfile(user.id, {
+            phone,
+            address,
+            city,
+            state,
+            zip_code: zipCode,
+            country,
+          });
+          console.log('Profile created and updated successfully');
+        } else {
+          throw updateError;
+        }
       }
 
-      console.log('Profile saved successfully');
-
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
-        "Success! ✅",
-        "Your profile has been updated successfully.",
+        "Success",
+        "Your profile has been updated successfully!",
         [
           {
             text: "OK",
-            onPress: () => {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              router.back();
-            },
+            onPress: () => router.back(),
           },
         ]
       );
     } catch (error: any) {
-      console.error("Error saving profile:", error);
+      console.error('Error saving profile:', error);
       Alert.alert(
-        "Save Failed",
-        error.message || "There was an error saving your profile. Please try again.",
-        [{ text: "OK" }]
+        "Error",
+        error.message || "Failed to update profile. Please try again."
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
@@ -187,14 +175,14 @@ const EditProfileScreen = () => {
         placeholderTextColor={colors.text + "60"}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
-        editable={!isSaving}
+        editable={!saving}
       />
     </View>
   );
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen
           options={{
             headerShown: true,
@@ -203,7 +191,6 @@ const EditProfileScreen = () => {
               backgroundColor: colors.card,
             },
             headerTintColor: colors.text,
-            headerShadowVisible: false,
           }}
         />
         <View style={styles.loadingContainer}>
@@ -244,31 +231,28 @@ const EditProfileScreen = () => {
               styles.content,
               {
                 opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
               },
             ]}
           >
-            {/* Profile Avatar */}
             <View style={styles.avatarSection}>
               <LinearGradient
-                colors={["#FF6B9D", "#C06C84"]}
+                colors={["#FF6B9D", "#C06C84", "#8B5A8E"]}
+                style={styles.avatarGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.avatarGradient}
               >
                 <IconSymbol name="person.fill" size={48} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={[styles.emailText, { color: colors.text + "80" }]}>
+              <Text style={[styles.avatarLabel, { color: colors.text + "80" }]}>
                 {user?.email}
               </Text>
             </View>
 
-            {/* Personal Information */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Personal Information
               </Text>
-              {renderInput("Display Name", displayName, setDisplayName, "Your name")}
+              {renderInput("Full Name", displayName, setDisplayName, "John Doe")}
               {renderInput(
                 "Phone",
                 phone,
@@ -279,13 +263,12 @@ const EditProfileScreen = () => {
               )}
             </View>
 
-            {/* Address Information */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Address Information
+                Address
               </Text>
               {renderInput(
-                "Address",
+                "Street Address",
                 address,
                 setAddress,
                 "123 Main Street",
@@ -305,11 +288,10 @@ const EditProfileScreen = () => {
               {renderInput("Country", country, setCountry, "USA")}
             </View>
 
-            {/* Save Button */}
             <View style={styles.buttonContainer}>
               <Pressable
                 onPress={handleSave}
-                disabled={isSaving}
+                disabled={saving}
                 style={({ pressed }) => [
                   styles.saveButton,
                   pressed && styles.buttonPressed,
@@ -321,12 +303,12 @@ const EditProfileScreen = () => {
                   end={{ x: 1, y: 1 }}
                   style={styles.gradient}
                 >
-                  {isSaving ? (
+                  {saving ? (
                     <ActivityIndicator color="#FFFFFF" size="small" />
                   ) : (
                     <>
                       <IconSymbol name="checkmark.circle.fill" size={24} color="#FFFFFF" />
-                      <Text style={styles.saveText}>Save Profile</Text>
+                      <Text style={styles.saveButtonText}>Save Changes</Text>
                     </>
                   )}
                 </LinearGradient>
@@ -337,7 +319,7 @@ const EditProfileScreen = () => {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -360,9 +342,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 16,
   },
   loadingText: {
+    marginTop: 16,
     fontSize: 16,
   },
   avatarSection: {
@@ -373,26 +355,26 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     marginBottom: 12,
     ...Platform.select({
       ios: {
-        shadowColor: "#FF6B9D",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
       },
       android: {
         elevation: 8,
       },
     }),
   },
-  emailText: {
+  avatarLabel: {
     fontSize: 14,
   },
   section: {
-    marginBottom: 30,
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 20,
@@ -444,11 +426,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     gap: 12,
   },
-  saveText: {
+  saveButtonText: {
     color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "700",
   },
 });
-
-export default EditProfileScreen;

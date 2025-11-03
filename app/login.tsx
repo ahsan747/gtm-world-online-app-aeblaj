@@ -28,26 +28,59 @@ export default function LoginScreen() {
   const theme = useTheme();
 
   const handleLogin = async () => {
+    console.log('=== LOGIN BUTTON PRESSED ===');
+    console.log('Email:', email);
+    
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
     setLoading(true);
     try {
+      console.log('Attempting to sign in...');
       await signIn(email, password);
-      router.replace('/(tabs)/(home)/');
+      
+      console.log('Login successful, navigating to home');
+      Alert.alert(
+        'Welcome Back! 👋',
+        'You have successfully logged in.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.replace('/(tabs)/(home)/'),
+          },
+        ]
+      );
     } catch (error: any) {
-      let errorMessage = 'Failed to login';
-      if (error.code === 'auth/invalid-credential') {
+      console.error('Login failed:', error);
+      
+      let errorMessage = 'Failed to login. Please try again.';
+      
+      if (error.message) {
+        // Display the actual error message from Supabase
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Please verify your email address before logging in. Check your inbox for the confirmation email.';
+        } else {
+          errorMessage = error.message;
+        }
+      } else if (error.code === 'invalid_credentials') {
         errorMessage = 'Invalid email or password';
-      } else if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email';
-      } else if (error.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password';
-      } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many failed attempts. Please try again later';
+      } else if (error.code === 'user_not_found') {
+        errorMessage = 'No account found with this email. Please sign up first.';
+      } else if (error.code === 'email_not_confirmed') {
+        errorMessage = 'Please verify your email address before logging in.';
       }
+      
       Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);
