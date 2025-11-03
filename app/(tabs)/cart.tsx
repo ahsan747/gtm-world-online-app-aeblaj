@@ -146,10 +146,14 @@ export default function CartScreen() {
   }, []); // Empty dependency array is intentional - animation should only run once on mount
 
   const handleCheckout = () => {
+    console.log("Checkout button pressed");
+    
     if (cart.length === 0) {
       Alert.alert("Empty Cart", "Please add items to your cart before checking out.");
       return;
     }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     if (!user) {
       Alert.alert(
@@ -162,18 +166,24 @@ export default function CartScreen() {
           },
           {
             text: "Login",
-            onPress: () => router.push("/login"),
+            onPress: () => {
+              console.log("Navigating to login");
+              router.push("/login");
+            },
           },
           {
             text: "Continue as Guest",
-            onPress: () => router.push("/checkout"),
+            onPress: () => {
+              console.log("Navigating to checkout as guest");
+              router.push("/checkout");
+            },
           },
         ]
       );
       return;
     }
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    console.log("Navigating to checkout");
     router.push("/checkout");
   };
 
@@ -382,6 +392,9 @@ export default function CartScreen() {
                 </Text>
               </View>
             </Animated.View>
+
+            {/* Add extra spacing at the bottom to prevent overlap with FloatingTabBar */}
+            <View style={{ height: 120 }} />
           </ScrollView>
 
           <Animated.View 
@@ -593,6 +606,8 @@ const styles = StyleSheet.create({
   footer: {
     borderTopWidth: 1,
     borderTopColor: "rgba(0, 0, 0, 0.1)",
+    // Add extra bottom padding to prevent overlap with FloatingTabBar
+    paddingBottom: Platform.OS === "ios" ? 100 : 90,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -610,7 +625,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-    paddingBottom: Platform.OS === "ios" ? 24 : 16,
+    paddingTop: 16,
   },
   footerLabel: {
     fontSize: 13,

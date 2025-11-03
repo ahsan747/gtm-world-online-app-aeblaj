@@ -40,6 +40,7 @@ export default function CheckoutScreen() {
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
+    console.log("Checkout screen mounted");
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -60,6 +61,8 @@ export default function CheckoutScreen() {
   const total = subtotal + shipping + tax;
 
   const handlePlaceOrder = async () => {
+    console.log("Place order button pressed");
+    
     if (!name || !email || !phone || !address || !city || !zipCode || !country) {
       Alert.alert("Missing Information", "Please fill in all required fields.");
       return;
@@ -74,8 +77,11 @@ export default function CheckoutScreen() {
     setIsProcessing(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+    console.log("Processing order...");
+
     // Simulate order processing
     setTimeout(() => {
+      console.log("Order processed successfully");
       setIsProcessing(false);
       clearCart();
       
@@ -85,7 +91,10 @@ export default function CheckoutScreen() {
         [
           {
             text: "Continue Shopping",
-            onPress: () => router.replace("/(tabs)/(home)"),
+            onPress: () => {
+              console.log("Navigating back to home");
+              router.replace("/(tabs)/(home)");
+            },
           },
         ]
       );
@@ -131,6 +140,7 @@ export default function CheckoutScreen() {
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                console.log("Back button pressed");
                 router.back();
               }}
               style={({ pressed }) => [
@@ -335,6 +345,9 @@ export default function CheckoutScreen() {
               Your order will be processed securely. You&apos;ll receive a confirmation email shortly.
             </Text>
           </Animated.View>
+
+          {/* Add extra spacing at the bottom for better scrolling */}
+          <View style={{ height: 40 }} />
         </ScrollView>
 
         <Animated.View 
