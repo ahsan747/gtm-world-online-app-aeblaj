@@ -28,7 +28,7 @@ const CheckoutScreen = () => {
   const { colors } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
-  const { items, total, clearCart } = useCart();
+  const { cart, getCartTotal, clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Shipping information state
@@ -61,6 +61,8 @@ const CheckoutScreen = () => {
   }, []);
 
   const handlePlaceOrder = async () => {
+    console.log('Place order button pressed');
+    
     // Validation
     if (!fullName.trim()) {
       Alert.alert("Error", "Please enter your full name");
@@ -91,7 +93,7 @@ const CheckoutScreen = () => {
       return;
     }
 
-    if (items.length === 0) {
+    if (cart.length === 0) {
       Alert.alert("Error", "Your cart is empty");
       return;
     }
@@ -100,6 +102,7 @@ const CheckoutScreen = () => {
       setIsProcessing(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+      console.log('Creating user profile if needed...');
       // Create user profile if it doesn't exist
       if (user?.uid) {
         try {
@@ -109,16 +112,18 @@ const CheckoutScreen = () => {
         }
       }
 
+      const total = getCartTotal();
+      
       // Prepare order data
       const orderData = {
         user_id: user?.uid || 'guest',
         user_email: email,
-        items: items.map(item => ({
-          product_id: item.id,
-          product_name: item.name,
-          product_image: item.image,
+        items: cart.map(item => ({
+          product_id: item.product.id,
+          product_name: item.product.name,
+          product_image: item.product.image,
           quantity: item.quantity,
-          price: item.price,
+          price: item.product.price,
         })),
         shipping_info: {
           full_name: fullName,
@@ -134,7 +139,7 @@ const CheckoutScreen = () => {
         status: 'pending' as const,
       };
 
-      console.log('Placing order:', orderData);
+      console.log('Placing order with data:', orderData);
 
       // Save order to Supabase
       const order = await createOrder(orderData);
@@ -201,6 +206,11 @@ const CheckoutScreen = () => {
     </View>
   );
 
+  const subtotal = getCartTotal();
+  const shipping = subtotal > 0 ? (subtotal > 50 ? 0 : 5.99) : 0;
+  const tax = subtotal * 0.08;
+  const total = subtotal + shipping + tax;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <Stack.Screen
@@ -242,16 +252,41 @@ const CheckoutScreen = () => {
                 style={[styles.summaryCard, { backgroundColor: colors.card }]}
                 intensity={Platform.OS === "ios" ? 20 : 0}
               >
-                {items.map((item, index) => (
-                  <View key={item.id} style={styles.summaryItem}>
+                {cart.map((item, index) => (
+                  <View key={item.product.id} style={styles.summaryItem}>
                     <Text style={[styles.itemName, { color: colors.text }]}>
-                      {item.name} x {item.quantity}
+                      {item.product.name} x {item.quantity}
                     </Text>
                     <Text style={[styles.itemPrice, { color: colors.text }]}>
-                      ${(item.price * item.quantity).toFixed(2)}
+                      ${(item.product.price * item.quantity).toFixed(2)}
                     </Text>
                   </View>
                 ))}
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View style={styles.summaryItem}>
+                  <Text style={[styles.summaryLabel, { color: colors.text }]}>
+                    Subtotal
+                  </Text>
+                  <Text style={[styles.summaryValue, { color: colors.text }]}>
+                    ${subtotal.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.summaryItem}>
+                  <Text style={[styles.summaryLabel, { color: colors.text }]}>
+                    Shipping
+                  </Text>
+                  <Text style={[styles.summaryValue, { color: shipping === 0 ? "#34C759" : colors.text }]}>
+                    {shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}
+                  </Text>
+                </View>
+                <View style={styles.summaryItem}>
+                  <Text style={[styles.summaryLabel, { color: colors.text }]}>
+                    Tax (8%)
+                  </Text>
+                  <Text style={[styles.summaryValue, { color: colors.text }]}>
+                    ${tax.toFixed(2)}
+                  </Text>
+                </View>
                 <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 <View style={styles.summaryItem}>
                   <Text style={[styles.totalLabel, { color: colors.text }]}>
@@ -328,7 +363,7 @@ const CheckoutScreen = () => {
                   ) : (
                     <>
                       <IconSymbol name="checkmark.circle.fill" size={24} color="#FFFFFF" />
-                      <Text style={styles.placeOrderText}>Place Order</Text>
+                      <Text style={styles.placeOrderText}>Place Order - ${total.toFixed(2)}</Text>
                     </>
                   )}
                 </LinearGradient>
@@ -393,6 +428,13 @@ const styles = StyleSheet.create({
   },
   itemPrice: {
     fontSize: 16,
+    fontWeight: "600",
+  },
+  summaryLabel: {
+    fontSize: 15,
+  },
+  summaryValue: {
+    fontSize: 15,
     fontWeight: "600",
   },
   divider: {

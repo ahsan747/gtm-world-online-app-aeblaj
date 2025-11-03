@@ -59,8 +59,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         if (cart.length > 0) {
           await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+          console.log('Cart saved to storage:', cart.length, 'items');
         } else {
           await AsyncStorage.removeItem(CART_STORAGE_KEY);
+          console.log('Cart cleared from storage');
         }
       } catch (error) {
         console.error('Error saving cart:', error);
@@ -71,10 +73,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   }, [cart]); // Depends on cart - save whenever cart changes
 
   const addToCart = useCallback((product: Product, quantity: number = 1) => {
+    console.log('Adding to cart:', product.name, 'quantity:', quantity);
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.product.id === product.id);
       
       if (existingItem) {
+        console.log('Product already in cart, updating quantity');
         return prevCart.map((item) =>
           item.product.id === product.id
             ? { ...item, quantity: item.quantity + quantity }
@@ -82,17 +86,18 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         );
       }
       
+      console.log('Adding new product to cart');
       return [...prevCart, { product, quantity }];
     });
-    console.log(`Added ${product.name} to cart`);
   }, []); // No dependencies - uses functional setState
 
   const removeFromCart = useCallback((productId: string) => {
+    console.log('Removing from cart:', productId);
     setCart((prevCart) => prevCart.filter((item) => item.product.id !== productId));
-    console.log(`Removed product ${productId} from cart`);
   }, []); // No dependencies - uses functional setState
 
   const updateQuantity = useCallback((productId: string, quantity: number) => {
+    console.log('Updating quantity for:', productId, 'to:', quantity);
     if (quantity <= 0) {
       removeFromCart(productId);
       return;
@@ -103,20 +108,21 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         item.product.id === productId ? { ...item, quantity } : item
       )
     );
-    console.log(`Updated quantity for product ${productId} to ${quantity}`);
   }, [removeFromCart]); // Depends on removeFromCart
 
   const clearCart = useCallback(() => {
+    console.log('Clearing cart');
     setCart([]);
-    console.log('Cart cleared');
   }, []); // No dependencies - uses direct setState
 
   const getCartTotal = useCallback(() => {
-    return cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
+    const total = cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
+    return total;
   }, [cart]); // Depends on cart
 
   const getCartItemCount = useCallback(() => {
-    return cart.reduce((count, item) => count + item.quantity, 0);
+    const count = cart.reduce((count, item) => count + item.quantity, 0);
+    return count;
   }, [cart]); // Depends on cart
 
   const value = {

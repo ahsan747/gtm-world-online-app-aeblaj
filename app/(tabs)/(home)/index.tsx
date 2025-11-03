@@ -11,6 +11,7 @@ import {
   ScrollView,
   TextInput,
   Animated,
+  Alert,
 } from "react-native";
 import { useCart } from "@/contexts/CartContext";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -247,10 +248,29 @@ export default function HomeScreen() {
   });
 
   const handleAddToCart = (product: Product) => {
+    console.log('Quick add to cart from home screen:', product.name);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     addToCart(product, 1);
-    // Navigate to checkout after adding to cart
-    router.push("/checkout");
+    
+    // Show success alert with options
+    Alert.alert(
+      "Added to Cart! 🛒",
+      `${product.name} has been added to your cart.`,
+      [
+        {
+          text: "Continue Shopping",
+          style: "cancel",
+          onPress: () => console.log('User chose to continue shopping'),
+        },
+        {
+          text: "View Cart",
+          onPress: () => {
+            console.log('User chose to view cart');
+            router.push("/(tabs)/cart");
+          },
+        },
+      ]
+    );
   };
 
   const renderHeaderRight = () => (

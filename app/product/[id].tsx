@@ -162,10 +162,39 @@ export default function ProductDetailScreen() {
       return;
     }
 
+    console.log('Adding product to cart:', product.name, 'quantity:', quantity);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     addToCart(product, quantity);
-    // Navigate to checkout after adding to cart
-    router.push("/checkout");
+    
+    // Show success alert with options
+    Alert.alert(
+      "Added to Cart! 🛒",
+      `${product.name} (x${quantity}) has been added to your cart.`,
+      [
+        {
+          text: "Continue Shopping",
+          style: "cancel",
+          onPress: () => {
+            console.log('User chose to continue shopping');
+            router.back();
+          },
+        },
+        {
+          text: "View Cart",
+          onPress: () => {
+            console.log('User chose to view cart');
+            router.push("/(tabs)/cart");
+          },
+        },
+        {
+          text: "Checkout",
+          onPress: () => {
+            console.log('User chose to checkout');
+            router.push("/checkout");
+          },
+        },
+      ]
+    );
   };
 
   return (
