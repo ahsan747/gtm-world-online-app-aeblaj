@@ -78,6 +78,9 @@ const CheckoutScreen = () => {
   }, [user]);
 
   useEffect(() => {
+    console.log('=== CHECKOUT SCREEN MOUNTED ===');
+    console.log('Cart items on mount:', cart.length);
+    
     // Entrance animations and load profile - only run once on mount
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -171,7 +174,7 @@ const CheckoutScreen = () => {
       const tax = subtotal * 0.08;
       const total = subtotal + shipping + tax;
       
-      // Prepare order data
+      // Prepare order data - IMPORTANT: Save cart items before clearing
       const orderData = {
         user_id: user?.id || 'guest',
         user_email: email,
@@ -204,31 +207,33 @@ const CheckoutScreen = () => {
 
       console.log('Order placed successfully:', order.id);
 
-      // Clear cart
+      // Clear cart ONLY after successful order creation
+      console.log('Clearing cart after successful order');
       clearCart();
 
-      // Show success message
+      // Show success message and navigate
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
-        "Order Placed Successfully! 🎉",
-        `Your order #${order.id?.substring(0, 8)} has been placed. We'll send you a confirmation email at ${email}.`,
-        [
-          {
-            text: "View Orders",
-            onPress: () => {
-              console.log('Navigating to orders screen');
-              router.replace("/orders");
+      
+      // Navigate immediately without waiting for Alert
+      const orderId = order.id?.substring(0, 8).toUpperCase();
+      
+      // Navigate to orders page first
+      router.replace("/orders");
+      
+      // Then show the success alert (non-blocking)
+      setTimeout(() => {
+        Alert.alert(
+          "Order Placed Successfully! 🎉",
+          `Your order #${orderId} has been placed. We'll send you a confirmation email at ${email}.`,
+          [
+            {
+              text: "OK",
+              onPress: () => console.log('Order success alert dismissed'),
             },
-          },
-          {
-            text: "Continue Shopping",
-            onPress: () => {
-              console.log('Navigating to home screen');
-              router.replace("/(tabs)/(home)");
-            },
-          },
-        ]
-      );
+          ]
+        );
+      }, 500);
+      
     } catch (error: any) {
       console.error("Error placing order:", error);
       console.error("Error details:", JSON.stringify(error, null, 2));
@@ -244,7 +249,6 @@ const CheckoutScreen = () => {
         [{ text: "OK" }]
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally {
       setIsProcessing(false);
     }
   };
