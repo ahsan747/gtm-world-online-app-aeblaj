@@ -21,7 +21,7 @@ import {
 import { IconSymbol } from "@/components/IconSymbol";
 import { useCart } from "@/contexts/CartContext";
 import * as Haptics from "expo-haptics";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createOrder, createUserProfile, getUserProfile } from "@/services/database";
 
 const CheckoutScreen = () => {
@@ -46,24 +46,7 @@ const CheckoutScreen = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    loadUserProfile();
-  }, []);
-
-  const loadUserProfile = async () => {
+  const loadUserProfile = useCallback(async () => {
     if (!user) {
       console.log('No user logged in, skipping profile load');
       setLoadingProfile(false);
@@ -92,7 +75,25 @@ const CheckoutScreen = () => {
     } finally {
       setLoadingProfile(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    // Entrance animations and load profile - only run once on mount
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    loadUserProfile();
+  }, [fadeAnim, loadUserProfile, slideAnim]);
 
   const handlePlaceOrder = async () => {
     console.log('=== PLACE ORDER BUTTON PRESSED ===');

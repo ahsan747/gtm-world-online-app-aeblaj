@@ -38,6 +38,7 @@ const ContactScreen = () => {
   const slideAnim = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
+    // Entrance animations - only run once on mount
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -50,7 +51,7 @@ const ContactScreen = () => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
   const handleSubmit = async () => {
     // Validation

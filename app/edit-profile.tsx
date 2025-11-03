@@ -21,7 +21,7 @@ import {
 import { getUserProfile, updateUserProfile, createUserProfile } from "@/services/database";
 import { IconSymbol } from "@/components/IconSymbol";
 import * as Haptics from "expo-haptics";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 
 export default function EditProfileScreen() {
   const { colors } = useTheme();
@@ -40,17 +40,7 @@ export default function EditProfileScreen() {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-
-    loadProfile();
-  }, []);
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     if (!user) {
       console.log('No user logged in');
       setLoading(false);
@@ -79,7 +69,18 @@ export default function EditProfileScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    // Entrance animation and load profile - only run once on mount
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
+    loadProfile();
+  }, [fadeAnim, loadProfile]);
 
   const handleSave = async () => {
     if (!user) {

@@ -21,51 +21,20 @@ import {
   RefreshControl,
 } from "react-native";
 
-export default function OrdersScreen() {
-  const { colors } = useTheme();
-  const router = useRouter();
-  const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+// Order Card Component
+const OrderCard = ({ order, index, colors }: { order: Order; index: number; colors: any }) => {
+  const itemAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
+    // Animation runs once on mount - itemAnim and index are stable refs/props
+    Animated.spring(itemAnim, {
       toValue: 1,
-      duration: 500,
+      friction: 8,
+      tension: 40,
+      delay: index * 100,
       useNativeDriver: true,
     }).start();
-
-    loadOrders();
-  }, []);
-
-  const loadOrders = async () => {
-    if (!user) {
-      console.log('No user logged in');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      console.log('Loading orders for user:', user.id);
-      const userOrders = await getUserOrders(user.id);
-      console.log('Orders loaded:', userOrders.length);
-      setOrders(userOrders);
-    } catch (error) {
-      console.error('Error loading orders:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const onRefresh = () => {
-    console.log('Refreshing orders');
-    setRefreshing(true);
-    loadOrders();
-  };
+  }, [index, itemAnim]);
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -112,117 +81,150 @@ export default function OrdersScreen() {
     });
   };
 
-  const renderOrderCard = (order: Order, index: number) => {
-    const itemAnim = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-      Animated.spring(itemAnim, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        delay: index * 100,
-        useNativeDriver: true,
-      }).start();
-    }, []);
-
-    return (
-      <Animated.View
-        key={order.id}
-        style={{
-          opacity: itemAnim,
-          transform: [
-            {
-              translateY: itemAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [50, 0],
-              }),
-            },
-          ],
+  return (
+    <Animated.View
+      style={{
+        opacity: itemAnim,
+        transform: [
+          {
+            translateY: itemAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [50, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      <Pressable
+        onPress={() => {
+          console.log('Order card pressed:', order.id);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }}
+        style={({ pressed }) => [
+          styles.orderCard,
+          {
+            backgroundColor: colors.card,
+            opacity: pressed ? 0.9 : 1,
+          },
+        ]}
       >
-        <Pressable
-          onPress={() => {
-            console.log('Order card pressed:', order.id);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }}
-          style={({ pressed }) => [
-            styles.orderCard,
-            {
-              backgroundColor: colors.card,
-              opacity: pressed ? 0.9 : 1,
-            },
-          ]}
-        >
-          <View style={styles.orderHeader}>
-            <View style={styles.orderIdContainer}>
-              <Text style={[styles.orderIdLabel, { color: colors.text + "80" }]}>
-                Order #
-              </Text>
-              <Text style={[styles.orderId, { color: colors.text }]}>
-                {order.id?.substring(0, 8).toUpperCase()}
-              </Text>
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + "20" }]}>
-              <IconSymbol
-                name={getStatusIcon(order.status) as any}
-                size={16}
-                color={getStatusColor(order.status)}
-              />
-              <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
-                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-              </Text>
-            </View>
+        <View style={styles.orderHeader}>
+          <View style={styles.orderIdContainer}>
+            <Text style={[styles.orderIdLabel, { color: colors.text + "80" }]}>
+              Order #
+            </Text>
+            <Text style={[styles.orderId, { color: colors.text }]}>
+              {order.id?.substring(0, 8).toUpperCase()}
+            </Text>
           </View>
-
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          <View style={styles.orderDetails}>
-            <View style={styles.detailRow}>
-              <IconSymbol name="calendar" size={16} color={colors.text + "80"} />
-              <Text style={[styles.detailText, { color: colors.text + "80" }]}>
-                {formatDate(order.created_at || '')}
-              </Text>
-            </View>
-            
-            <View style={styles.detailRow}>
-              <IconSymbol name="bag" size={16} color={colors.text + "80"} />
-              <Text style={[styles.detailText, { color: colors.text + "80" }]}>
-                {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
-              </Text>
-            </View>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + "20" }]}>
+            <IconSymbol
+              name={getStatusIcon(order.status) as any}
+              size={16}
+              color={getStatusColor(order.status)}
+            />
+            <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
+              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+            </Text>
           </View>
+        </View>
 
-          <View style={styles.orderFooter}>
-            <View>
-              <Text style={[styles.totalLabel, { color: colors.text + "80" }]}>
-                Total Amount
-              </Text>
-              <Text style={[styles.totalAmount, { color: colors.primary }]}>
-                ${order.total_amount.toFixed(2)}
-              </Text>
-            </View>
-            
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                console.log('View details pressed for order:', order.id);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
-              style={({ pressed }) => [
-                styles.viewButton,
-                {
-                  backgroundColor: colors.primary,
-                  opacity: pressed ? 0.7 : 1,
-                },
-              ]}
-            >
-              <Text style={styles.viewButtonText}>View Details</Text>
-              <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
-            </Pressable>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <View style={styles.orderDetails}>
+          <View style={styles.detailRow}>
+            <IconSymbol name="calendar" size={16} color={colors.text + "80"} />
+            <Text style={[styles.detailText, { color: colors.text + "80" }]}>
+              {formatDate(order.created_at || '')}
+            </Text>
           </View>
-        </Pressable>
-      </Animated.View>
-    );
+          
+          <View style={styles.detailRow}>
+            <IconSymbol name="bag" size={16} color={colors.text + "80"} />
+            <Text style={[styles.detailText, { color: colors.text + "80" }]}>
+              {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.orderFooter}>
+          <View>
+            <Text style={[styles.totalLabel, { color: colors.text + "80" }]}>
+              Total Amount
+            </Text>
+            <Text style={[styles.totalAmount, { color: colors.primary }]}>
+              ${order.total_amount.toFixed(2)}
+            </Text>
+          </View>
+          
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              console.log('View details pressed for order:', order.id);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+            style={({ pressed }) => [
+              styles.viewButton,
+              {
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            <Text style={styles.viewButtonText}>View Details</Text>
+            <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
+          </Pressable>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+};
+
+export default function OrdersScreen() {
+  const { colors } = useTheme();
+  const router = useRouter();
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const loadOrders = useCallback(async () => {
+    if (!user) {
+      console.log('No user logged in');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      console.log('Loading orders for user:', user.id);
+      const userOrders = await getUserOrders(user.id);
+      console.log('Orders loaded:', userOrders.length);
+      setOrders(userOrders);
+    } catch (error) {
+      console.error('Error loading orders:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    // Entrance animation and load orders - only run once on mount
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
+    loadOrders();
+  }, [fadeAnim, loadOrders]);
+
+  const onRefresh = () => {
+    console.log('Refreshing orders');
+    setRefreshing(true);
+    loadOrders();
   };
 
   const renderEmptyState = () => (
@@ -358,7 +360,14 @@ export default function OrdersScreen() {
             </View>
             
             <View style={styles.ordersContainer}>
-              {orders.map((order, index) => renderOrderCard(order, index))}
+              {orders.map((order, index) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  index={index}
+                  colors={colors}
+                />
+              ))}
             </View>
           </Animated.View>
         </ScrollView>

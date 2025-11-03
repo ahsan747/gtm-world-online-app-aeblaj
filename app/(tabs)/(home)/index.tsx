@@ -29,13 +29,14 @@ const CategoryItem = ({ category, index, selectedCategory, onSelect, colors }: a
   const animValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Animation runs once on mount - animValue and index are stable refs/props
     Animated.timing(animValue, {
       toValue: 1,
       duration: 300,
       delay: index * 50,
       useNativeDriver: true,
     }).start();
-  }, []); // Empty dependency array is intentional - animation should only run once on mount
+  }, [animValue, index]);
 
   return (
     <Animated.View
@@ -88,6 +89,7 @@ const ProductCard = ({ product, index, onAddToCart, colors, router }: any) => {
   const animValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Animation runs once on mount - animValue and index are stable refs/props
     Animated.spring(animValue, {
       toValue: 1,
       friction: 8,
@@ -95,7 +97,7 @@ const ProductCard = ({ product, index, onAddToCart, colors, router }: any) => {
       delay: index * 50,
       useNativeDriver: true,
     }).start();
-  }, []); // Empty dependency array is intentional - animation should only run once on mount
+  }, [animValue, index]);
 
   return (
     <Animated.View
@@ -235,7 +237,7 @@ export default function HomeScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []); // Empty dependency array is intentional - animation should only run once on mount
+  }, [fadeAnim, scaleAnim, slideAnim]);
 
   const filteredProducts = products.filter((product) => {
     const matchesCategory =

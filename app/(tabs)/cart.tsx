@@ -26,6 +26,7 @@ const CartItemCard = ({ item, index, onRemove, onUpdateQuantity, colors }: any) 
   const itemAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Animation runs once on mount - itemAnim and index are stable refs/props
     Animated.spring(itemAnim, {
       toValue: 1,
       friction: 8,
@@ -33,7 +34,7 @@ const CartItemCard = ({ item, index, onRemove, onUpdateQuantity, colors }: any) 
       delay: index * 80,
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, [index, itemAnim]);
 
   return (
     <Animated.View
@@ -136,6 +137,7 @@ export default function CartScreen() {
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
+    // Entrance animations - only run once on mount
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -148,7 +150,7 @@ export default function CartScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
   const handleCheckout = () => {
     console.log("=== CHECKOUT BUTTON PRESSED ===");
