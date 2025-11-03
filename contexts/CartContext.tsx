@@ -51,7 +51,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     };
     
     loadCart();
-  }, []);
+  }, []); // Empty dependency array - only load on mount
 
   // Save cart to storage whenever it changes
   useEffect(() => {
@@ -68,7 +68,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     };
     
     saveCart();
-  }, [cart]);
+  }, [cart]); // Depends on cart - save whenever cart changes
 
   const addToCart = useCallback((product: Product, quantity: number = 1) => {
     setCart((prevCart) => {
@@ -85,12 +85,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       return [...prevCart, { product, quantity }];
     });
     console.log(`Added ${product.name} to cart`);
-  }, []);
+  }, []); // No dependencies - uses functional setState
 
   const removeFromCart = useCallback((productId: string) => {
     setCart((prevCart) => prevCart.filter((item) => item.product.id !== productId));
     console.log(`Removed product ${productId} from cart`);
-  }, []);
+  }, []); // No dependencies - uses functional setState
 
   const updateQuantity = useCallback((productId: string, quantity: number) => {
     if (quantity <= 0) {
@@ -104,20 +104,20 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       )
     );
     console.log(`Updated quantity for product ${productId} to ${quantity}`);
-  }, [removeFromCart]);
+  }, [removeFromCart]); // Depends on removeFromCart
 
   const clearCart = useCallback(() => {
     setCart([]);
     console.log('Cart cleared');
-  }, []);
+  }, []); // No dependencies - uses direct setState
 
   const getCartTotal = useCallback(() => {
     return cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
-  }, [cart]);
+  }, [cart]); // Depends on cart
 
   const getCartItemCount = useCallback(() => {
     return cart.reduce((count, item) => count + item.quantity, 0);
-  }, [cart]);
+  }, [cart]); // Depends on cart
 
   const value = {
     cart,
