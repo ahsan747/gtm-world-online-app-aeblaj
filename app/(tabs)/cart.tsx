@@ -33,7 +33,7 @@ const CartItemCard = ({ item, index, onRemove, onUpdateQuantity, colors }: any) 
       delay: index * 80,
       useNativeDriver: true,
     }).start();
-  }, []); // Empty dependency array is intentional - animation should only run once on mount
+  }, []);
 
   return (
     <Animated.View
@@ -65,6 +65,7 @@ const CartItemCard = ({ item, index, onRemove, onUpdateQuantity, colors }: any) 
           <View style={styles.quantityContainer}>
             <Pressable
               onPress={() => {
+                console.log('Decrease quantity button pressed');
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 onUpdateQuantity(item.product.id, item.quantity - 1);
               }}
@@ -86,6 +87,7 @@ const CartItemCard = ({ item, index, onRemove, onUpdateQuantity, colors }: any) 
             
             <Pressable
               onPress={() => {
+                console.log('Increase quantity button pressed');
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 onUpdateQuantity(item.product.id, item.quantity + 1);
               }}
@@ -108,7 +110,10 @@ const CartItemCard = ({ item, index, onRemove, onUpdateQuantity, colors }: any) 
         </View>
         
         <Pressable
-          onPress={() => onRemove(item.product.id, item.product.name)}
+          onPress={() => {
+            console.log('Remove item button pressed');
+            onRemove(item.product.id, item.product.name);
+          }}
           style={({ pressed }) => [
             styles.removeButton,
             { opacity: pressed ? 0.7 : 1 },
@@ -143,10 +148,12 @@ export default function CartScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []); // Empty dependency array is intentional - animation should only run once on mount
+  }, []);
 
   const handleCheckout = () => {
-    console.log("Checkout button pressed - starting checkout flow");
+    console.log("=== CHECKOUT BUTTON PRESSED ===");
+    console.log("Cart items:", cart.length);
+    console.log("User:", user ? user.email : "Not logged in");
     
     if (cart.length === 0) {
       console.log("Cart is empty, showing alert");
@@ -191,6 +198,7 @@ export default function CartScreen() {
   };
 
   const handleRemoveItem = (productId: string, productName: string) => {
+    console.log('Remove item requested:', productName);
     Alert.alert(
       "Remove Item",
       `Remove ${productName} from cart?`,
@@ -203,6 +211,7 @@ export default function CartScreen() {
           text: "Remove",
           style: "destructive",
           onPress: () => {
+            console.log('Removing item:', productId);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             removeFromCart(productId);
           },
@@ -212,6 +221,7 @@ export default function CartScreen() {
   };
 
   const handleClearCart = () => {
+    console.log('Clear cart requested');
     Alert.alert(
       "Clear Cart",
       "Are you sure you want to remove all items from your cart?",
@@ -224,6 +234,7 @@ export default function CartScreen() {
           text: "Clear All",
           style: "destructive",
           onPress: () => {
+            console.log('Clearing entire cart');
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             clearCart();
           },
@@ -253,6 +264,7 @@ export default function CartScreen() {
       </Text>
       <Pressable
         onPress={() => {
+          console.log('Start shopping button pressed');
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           router.push("/(tabs)/(home)");
         }}
@@ -396,7 +408,6 @@ export default function CartScreen() {
               </View>
             </Animated.View>
 
-            {/* Add extra spacing at the bottom to account for the footer */}
             <View style={{ height: 20 }} />
           </ScrollView>
 
@@ -421,7 +432,10 @@ export default function CartScreen() {
               </View>
               
               <Pressable
-                onPress={handleCheckout}
+                onPress={() => {
+                  console.log("=== CHECKOUT BUTTON TAPPED ===");
+                  handleCheckout();
+                }}
                 style={({ pressed }) => [
                   styles.checkoutButton,
                   {
@@ -617,7 +631,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     borderTopWidth: 1,
-    // Increased padding to ensure button is above FloatingTabBar
     paddingBottom: Platform.OS === "ios" ? 110 : 100,
     ...Platform.select({
       ios: {

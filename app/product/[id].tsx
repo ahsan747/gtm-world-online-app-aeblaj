@@ -36,7 +36,7 @@ const RelatedProductCard = ({ relatedProduct, index, colors, router }: any) => {
       delay: index * 100,
       useNativeDriver: true,
     }).start();
-  }, []); // Empty dependency array is intentional - animation should only run once on mount
+  }, []);
 
   return (
     <Animated.View
@@ -54,6 +54,7 @@ const RelatedProductCard = ({ relatedProduct, index, colors, router }: any) => {
     >
       <Pressable
         onPress={() => {
+          console.log('Related product tapped:', relatedProduct.name);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           router.push(`/product/${relatedProduct.id}`);
         }}
@@ -122,7 +123,7 @@ export default function ProductDetailScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []); // Empty dependency array is intentional - animation should only run once on mount
+  }, []);
 
   const product = products.find((p) => p.id === id);
 
@@ -157,16 +158,21 @@ export default function ProductDetailScreen() {
     .slice(0, 4);
 
   const handleAddToCart = () => {
+    console.log('=== ADD TO CART BUTTON PRESSED ===');
+    console.log('Product:', product.name);
+    console.log('Quantity:', quantity);
+    console.log('In Stock:', product.inStock);
+    
     if (!product.inStock) {
+      console.log('Product out of stock');
       Alert.alert("Out of Stock", "This product is currently unavailable.");
       return;
     }
 
-    console.log('Adding product to cart:', product.name, 'quantity:', quantity);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     addToCart(product, quantity);
+    console.log('Product added to cart successfully');
     
-    // Show success alert with options
     Alert.alert(
       "Added to Cart! 🛒",
       `${product.name} (x${quantity}) has been added to your cart.`,
@@ -210,6 +216,7 @@ export default function ProductDetailScreen() {
           headerLeft: () => (
             <Pressable
               onPress={() => {
+                console.log('Back button pressed');
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.back();
               }}
@@ -227,6 +234,7 @@ export default function ProductDetailScreen() {
           headerRight: () => (
             <Pressable
               onPress={() => {
+                console.log('Cart icon pressed from product detail');
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push("/(tabs)/cart");
               }}
@@ -424,6 +432,7 @@ export default function ProductDetailScreen() {
             <Pressable
               onPress={() => {
                 if (quantity > 1) {
+                  console.log('Decreasing quantity to:', quantity - 1);
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setQuantity(quantity - 1);
                 }
@@ -446,6 +455,7 @@ export default function ProductDetailScreen() {
 
             <Pressable
               onPress={() => {
+                console.log('Increasing quantity to:', quantity + 1);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setQuantity(quantity + 1);
               }}
@@ -463,7 +473,10 @@ export default function ProductDetailScreen() {
         </View>
 
         <Pressable
-          onPress={handleAddToCart}
+          onPress={() => {
+            console.log('=== ADD TO CART BUTTON TAPPED ===');
+            handleAddToCart();
+          }}
           disabled={!product.inStock}
           style={({ pressed }) => [
             styles.addToCartButton,
