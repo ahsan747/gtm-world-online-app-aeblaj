@@ -29,7 +29,7 @@ const CategoryItem = ({ category, index, selectedCategory, onSelect, colors }: a
   const animValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Animation runs once on mount - animValue and index are stable refs/props
+    // Animation runs once on mount with stable dependencies
     Animated.timing(animValue, {
       toValue: 1,
       duration: 300,
@@ -89,7 +89,7 @@ const ProductCard = ({ product, index, onAddToCart, colors, router }: any) => {
   const animValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Animation runs once on mount - animValue and index are stable refs/props
+    // Animation runs once on mount with stable dependencies
     Animated.spring(animValue, {
       toValue: 1,
       friction: 8,

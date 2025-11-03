@@ -26,7 +26,7 @@ const CartItemCard = ({ item, index, onRemove, onUpdateQuantity, colors }: any) 
   const itemAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Animation runs once on mount - itemAnim and index are stable refs/props
+    // Animation runs once on mount with stable dependencies
     Animated.spring(itemAnim, {
       toValue: 1,
       friction: 8,
