@@ -52,6 +52,16 @@ const ProfileScreen = () => {
 
   const menuItems = [
     {
+      icon: "person.crop.circle.fill",
+      title: "Edit Profile",
+      subtitle: "Update your personal information",
+      onPress: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        router.push("/edit-profile");
+      },
+      requiresAuth: true,
+    },
+    {
       icon: "bag.fill",
       title: "My Orders",
       subtitle: "View your order history",
@@ -59,6 +69,7 @@ const ProfileScreen = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         router.push("/orders");
       },
+      requiresAuth: true,
     },
     {
       icon: "envelope.fill",
@@ -68,6 +79,7 @@ const ProfileScreen = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         router.push("/contact");
       },
+      requiresAuth: false,
     },
     {
       icon: "bell.fill",
@@ -77,6 +89,7 @@ const ProfileScreen = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         Alert.alert("Coming Soon", "Notification settings will be available soon!");
       },
+      requiresAuth: false,
     },
     {
       icon: "gearshape.fill",
@@ -86,6 +99,7 @@ const ProfileScreen = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         Alert.alert("Coming Soon", "Settings will be available soon!");
       },
+      requiresAuth: false,
     },
     {
       icon: "questionmark.circle.fill",
@@ -95,6 +109,7 @@ const ProfileScreen = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         Alert.alert("Coming Soon", "Help center will be available soon!");
       },
+      requiresAuth: false,
     },
     {
       icon: "info.circle.fill",
@@ -104,37 +119,45 @@ const ProfileScreen = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         Alert.alert("GTM World Online", "Version 1.0.0\n\nYour trusted cosmetics store");
       },
+      requiresAuth: false,
     },
   ];
 
-  const renderMenuItem = (item: typeof menuItems[0], index: number) => (
-    <Pressable
-      key={index}
-      onPress={item.onPress}
-      style={({ pressed }) => [
-        styles.menuItem,
-        pressed && styles.menuItemPressed,
-      ]}
-    >
-      <GlassView
-        style={[styles.menuItemContent, { backgroundColor: colors.card }]}
-        intensity={Platform.OS === "ios" ? 20 : 0}
+  const renderMenuItem = (item: typeof menuItems[0], index: number) => {
+    // Skip items that require auth if user is not logged in
+    if (item.requiresAuth && !user) {
+      return null;
+    }
+
+    return (
+      <Pressable
+        key={index}
+        onPress={item.onPress}
+        style={({ pressed }) => [
+          styles.menuItem,
+          pressed && styles.menuItemPressed,
+        ]}
       >
-        <View style={[styles.iconContainer, { backgroundColor: colors.primary + "20" }]}>
-          <IconSymbol name={item.icon} size={24} color={colors.primary} />
-        </View>
-        <View style={styles.menuItemText}>
-          <Text style={[styles.menuItemTitle, { color: colors.text }]}>
-            {item.title}
-          </Text>
-          <Text style={[styles.menuItemSubtitle, { color: colors.text + "80" }]}>
-            {item.subtitle}
-          </Text>
-        </View>
-        <IconSymbol name="chevron.right" size={20} color={colors.text + "60"} />
-      </GlassView>
-    </Pressable>
-  );
+        <GlassView
+          style={[styles.menuItemContent, { backgroundColor: colors.card }]}
+          intensity={Platform.OS === "ios" ? 20 : 0}
+        >
+          <View style={[styles.iconContainer, { backgroundColor: colors.primary + "20" }]}>
+            <IconSymbol name={item.icon} size={24} color={colors.primary} />
+          </View>
+          <View style={styles.menuItemText}>
+            <Text style={[styles.menuItemTitle, { color: colors.text }]}>
+              {item.title}
+            </Text>
+            <Text style={[styles.menuItemSubtitle, { color: colors.text + "80" }]}>
+              {item.subtitle}
+            </Text>
+          </View>
+          <IconSymbol name="chevron.right" size={20} color={colors.text + "60"} />
+        </GlassView>
+      </Pressable>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -160,7 +183,7 @@ const ProfileScreen = () => {
             <IconSymbol name="person.fill" size={48} color="#FFFFFF" />
           </LinearGradient>
           <Text style={[styles.userName, { color: colors.text }]}>
-            {user?.displayName || user?.email?.split("@")[0] || "User"}
+            {user?.displayName || user?.email?.split("@")[0] || "Guest User"}
           </Text>
           <Text style={[styles.userEmail, { color: colors.text + "80" }]}>
             {user?.email || "Not logged in"}
