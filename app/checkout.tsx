@@ -22,13 +22,13 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { useCart } from "@/contexts/CartContext";
 import * as Haptics from "expo-haptics";
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { createOrder, createUserProfile, getUserProfile } from "@/services/database";
+import { createUserProfile, getUserProfile } from "@/services/database";
 
 const CheckoutScreen = () => {
   const { colors } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
-  const { cart, getCartTotal, clearCart } = useCart();
+  const { cart, getCartTotal } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
@@ -98,8 +98,8 @@ const CheckoutScreen = () => {
     loadUserProfile();
   }, [fadeAnim, loadUserProfile, slideAnim]);
 
-  const handlePlaceOrder = async () => {
-    console.log('=== PLACE ORDER BUTTON PRESSED ===');
+  const handleContinueToPayment = async () => {
+    console.log('=== CONTINUE TO PAYMENT BUTTON PRESSED ===');
     console.log('Cart items:', cart.length);
     console.log('User:', user ? user.email : 'Guest');
     
@@ -174,7 +174,7 @@ const CheckoutScreen = () => {
       const tax = subtotal * 0.08;
       const total = subtotal + shipping + tax;
       
-      // Prepare order data - IMPORTANT: Save cart items before clearing
+      // Prepare order data to pass to payment screens
       const orderData = {
         user_id: user?.id || 'guest',
         user_email: email,
@@ -199,52 +199,30 @@ const CheckoutScreen = () => {
         status: 'pending' as const,
       };
 
-      console.log('Placing order with Supabase...');
-      console.log('Order data:', JSON.stringify(orderData, null, 2));
+      console.log('Navigating to payment method selection...');
+      console.log('Order data prepared:', JSON.stringify(orderData, null, 2));
 
-      // Save order to Supabase
-      const order = await createOrder(orderData);
+      // Navigate to payment method selection
+      router.push({
+        pathname: "/payment-method",
+        params: {
+          orderData: JSON.stringify(orderData),
+        },
+      });
 
-      console.log('Order placed successfully:', order.id);
-
-      // Clear cart ONLY after successful order creation
-      console.log('Clearing cart after successful order');
-      clearCart();
-
-      // Show success message and navigate
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      // Navigate immediately without waiting for Alert
-      const orderId = order.id?.substring(0, 8).toUpperCase();
-      
-      // Navigate to orders page first
-      router.replace("/orders");
-      
-      // Then show the success alert (non-blocking)
-      setTimeout(() => {
-        Alert.alert(
-          "Order Placed Successfully! 🎉",
-          `Your order #${orderId} has been placed. We'll send you a confirmation email at ${email}.`,
-          [
-            {
-              text: "OK",
-              onPress: () => console.log('Order success alert dismissed'),
-            },
-          ]
-        );
-      }, 500);
+      setIsProcessing(false);
       
     } catch (error: any) {
-      console.error("Error placing order:", error);
+      console.error("Error preparing checkout:", error);
       console.error("Error details:", JSON.stringify(error, null, 2));
       
-      let errorMessage = "There was an error placing your order. Please try again.";
+      let errorMessage = "There was an error preparing your order. Please try again.";
       if (error.message) {
         errorMessage = error.message;
       }
       
       Alert.alert(
-        "Order Failed",
+        "Checkout Error",
         errorMessage,
         [{ text: "OK" }]
       );
@@ -367,7 +345,7 @@ const CheckoutScreen = () => {
                 style={[styles.summaryCard, { backgroundColor: colors.card }]}
                 intensity={Platform.OS === "ios" ? 20 : 0}
               >
-                {cart.map((item, index) => (
+                {cart.map((item) => (
                   <View key={item.product.id} style={styles.summaryItem}>
                     <Text style={[styles.itemName, { color: colors.text }]}>
                       {item.product.name} x {item.quantity}
@@ -468,16 +446,16 @@ const CheckoutScreen = () => {
               )}
             </View>
 
-            {/* Place Order Button */}
+            {/* Continue to Payment Button */}
             <View style={styles.buttonContainer}>
               <Pressable
                 onPress={() => {
-                  console.log('=== PLACE ORDER BUTTON TAPPED ===');
-                  handlePlaceOrder();
+                  console.log('=== CONTINUE TO PAYMENT BUTTON TAPPED ===');
+                  handleContinueToPayment();
                 }}
                 disabled={isProcessing || loadingProfile}
                 style={({ pressed }) => [
-                  styles.placeOrderButton,
+                  styles.continueButton,
                   (isProcessing || loadingProfile) && styles.buttonDisabled,
                   pressed && styles.buttonPressed,
                 ]}
@@ -491,16 +469,19 @@ const CheckoutScreen = () => {
                   {isProcessing ? (
                     <>
                       <ActivityIndicator color="#FFFFFF" size="small" />
-                      <Text style={styles.placeOrderText}>Processing...</Text>
+                      <Text style={styles.continueText}>Processing...</Text>
                     </>
                   ) : (
                     <>
-                      <IconSymbol name="checkmark.circle.fill" size={24} color="#FFFFFF" />
-                      <Text style={styles.placeOrderText}>Place Order - ${total.toFixed(2)}</Text>
+                      <Text style={styles.continueText}>Continue to Payment</Text>
+                      <IconSymbol name="arrow.right" size={24} color="#FFFFFF" />
                     </>
                   )}
                 </LinearGradient>
               </Pressable>
+              <Text style={[styles.totalHint, { color: colors.text + "60" }]}>
+                Total: ${total.toFixed(2)}
+              </Text>
             </View>
           </Animated.View>
         </ScrollView>
@@ -610,9 +591,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 20,
   },
-  placeOrderButton: {
+  continueButton: {
     borderRadius: 16,
     overflow: "hidden",
+    marginBottom: 12,
     ...Platform.select({
       ios: {
         shadowColor: "#FF6B9D",
@@ -640,10 +622,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     gap: 12,
   },
-  placeOrderText: {
+  continueText: {
     color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "700",
+  },
+  totalHint: {
+    fontSize: 14,
+    textAlign: "center",
   },
   emptyContainer: {
     flex: 1,

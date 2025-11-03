@@ -9,6 +9,10 @@ export interface Order {
   shipping_info: ShippingInfo;
   total_amount: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  payment_method?: string;
+  payment_status?: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded';
+  payment_id?: string;
+  payment_details?: any;
   created_at?: string;
   updated_at?: string;
 }
@@ -127,6 +131,42 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
     return data;
   } catch (error) {
     console.error('Failed to update order status:', error);
+    throw error;
+  }
+};
+
+export const updatePaymentStatus = async (
+  orderId: string, 
+  paymentStatus: Order['payment_status'],
+  paymentDetails?: any
+) => {
+  try {
+    console.log('Updating payment status:', orderId, paymentStatus);
+    const updateData: any = { 
+      payment_status: paymentStatus, 
+      updated_at: new Date().toISOString() 
+    };
+    
+    if (paymentDetails) {
+      updateData.payment_details = paymentDetails;
+    }
+    
+    const { data, error } = await supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating payment status:', error);
+      throw error;
+    }
+
+    console.log('Payment status updated successfully');
+    return data;
+  } catch (error) {
+    console.error('Failed to update payment status:', error);
     throw error;
   }
 };

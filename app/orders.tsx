@@ -1,14 +1,13 @@
 
+import { useAuth } from "@/contexts/AuthContext";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@react-navigation/native";
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, Stack } from "expo-router";
-import { useAuth } from "@/contexts/AuthContext";
-import { GlassView } from "expo-glass-effect";
 import { LinearGradient } from "expo-linear-gradient";
-import { IconSymbol } from "@/components/IconSymbol";
 import { getUserOrders, Order } from "@/services/database";
+import { IconSymbol } from "@/components/IconSymbol";
 import * as Haptics from "expo-haptics";
+import { useRouter, Stack } from "expo-router";
 import {
   View,
   Text,
@@ -20,17 +19,15 @@ import {
   Animated,
   RefreshControl,
 } from "react-native";
+import { GlassView } from "expo-glass-effect";
 
-// Order Card Component
 const OrderCard = ({ order, index, colors }: { order: Order; index: number; colors: any }) => {
   const itemAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Animation runs once on mount - itemAnim and index are stable refs/props
-    Animated.spring(itemAnim, {
+    Animated.timing(itemAnim, {
       toValue: 1,
-      friction: 8,
-      tension: 40,
+      duration: 400,
       delay: index * 100,
       useNativeDriver: true,
     }).start();
@@ -58,7 +55,7 @@ const OrderCard = ({ order, index, colors }: { order: Order; index: number; colo
       case 'pending':
         return 'clock';
       case 'processing':
-        return 'gear';
+        return 'gearshape.2';
       case 'shipped':
         return 'shippingbox';
       case 'delivered':
@@ -66,20 +63,50 @@ const OrderCard = ({ order, index, colors }: { order: Order; index: number; colo
       case 'cancelled':
         return 'xmark.circle.fill';
       default:
-        return 'doc.text';
+        return 'questionmark.circle';
+    }
+  };
+
+  const getPaymentStatusColor = (status?: string) => {
+    switch (status) {
+      case 'completed':
+        return '#34C759';
+      case 'processing':
+        return '#007AFF';
+      case 'failed':
+        return '#FF3B30';
+      case 'refunded':
+        return '#FF9500';
+      default:
+        return colors.text + '80';
+    }
+  };
+
+  const getPaymentMethodIcon = (method?: string) => {
+    switch (method) {
+      case 'credit_card':
+        return 'creditcard';
+      case 'paypal':
+        return 'dollarsign.circle';
+      default:
+        return 'questionmark.circle';
     }
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
-      year: 'numeric',
       month: 'short',
       day: 'numeric',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
   };
+
+  const orderId = order.id?.substring(0, 8).toUpperCase();
+  const statusColor = getStatusColor(order.status);
+  const statusIcon = getStatusIcon(order.status);
 
   return (
     <Animated.View
@@ -95,99 +122,103 @@ const OrderCard = ({ order, index, colors }: { order: Order; index: number; colo
         ],
       }}
     >
-      <Pressable
-        onPress={() => {
-          console.log('Order card pressed:', order.id);
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }}
-        style={({ pressed }) => [
-          styles.orderCard,
-          {
-            backgroundColor: colors.card,
-            opacity: pressed ? 0.9 : 1,
-          },
-        ]}
+      <GlassView
+        style={[styles.orderCard, { backgroundColor: colors.card }]}
+        intensity={Platform.OS === "ios" ? 20 : 0}
       >
+        {/* Header */}
         <View style={styles.orderHeader}>
           <View style={styles.orderIdContainer}>
-            <Text style={[styles.orderIdLabel, { color: colors.text + "80" }]}>
-              Order #
-            </Text>
+            <IconSymbol name="number" size={16} color={colors.text + "80"} />
             <Text style={[styles.orderId, { color: colors.text }]}>
-              {order.id?.substring(0, 8).toUpperCase()}
+              {orderId}
             </Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + "20" }]}>
-            <IconSymbol
-              name={getStatusIcon(order.status) as any}
-              size={16}
-              color={getStatusColor(order.status)}
-            />
-            <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
+          <View style={[styles.statusBadge, { backgroundColor: statusColor + "20" }]}>
+            <IconSymbol name={statusIcon} size={14} color={statusColor} />
+            <Text style={[styles.statusText, { color: statusColor }]}>
               {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
             </Text>
           </View>
         </View>
 
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        {/* Items */}
+        <View style={styles.itemsContainer}>
+          {order.items.slice(0, 2).map((item, idx) => (
+            <View key={idx} style={styles.orderItem}>
+              <Text style={[styles.itemName, { color: colors.text }]}>
+                {item.product_name} x {item.quantity}
+              </Text>
+              <Text style={[styles.itemPrice, { color: colors.text + "80" }]}>
+                ${(item.price * item.quantity).toFixed(2)}
+              </Text>
+            </View>
+          ))}
+          {order.items.length > 2 && (
+            <Text style={[styles.moreItems, { color: colors.text + "60" }]}>
+              +{order.items.length - 2} more item{order.items.length - 2 > 1 ? 's' : ''}
+            </Text>
+          )}
+        </View>
 
-        <View style={styles.orderDetails}>
-          <View style={styles.detailRow}>
-            <IconSymbol name="calendar" size={16} color={colors.text + "80"} />
-            <Text style={[styles.detailText, { color: colors.text + "80" }]}>
+        {/* Payment Info */}
+        {order.payment_method && (
+          <View style={styles.paymentInfo}>
+            <View style={styles.paymentRow}>
+              <IconSymbol 
+                name={getPaymentMethodIcon(order.payment_method)} 
+                size={16} 
+                color={colors.text + "80"} 
+              />
+              <Text style={[styles.paymentLabel, { color: colors.text + "80" }]}>
+                {order.payment_method === 'credit_card' ? 'Credit Card' : 'PayPal'}
+              </Text>
+              {order.payment_details?.card_last_four && (
+                <Text style={[styles.paymentDetail, { color: colors.text + "60" }]}>
+                  •••• {order.payment_details.card_last_four}
+                </Text>
+              )}
+            </View>
+            {order.payment_status && (
+              <View style={styles.paymentRow}>
+                <IconSymbol 
+                  name={order.payment_status === 'completed' ? 'checkmark.circle' : 'clock'} 
+                  size={16} 
+                  color={getPaymentStatusColor(order.payment_status)} 
+                />
+                <Text style={[styles.paymentStatus, { color: getPaymentStatusColor(order.payment_status) }]}>
+                  Payment {order.payment_status}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Footer */}
+        <View style={[styles.orderFooter, { borderTopColor: colors.border }]}>
+          <View style={styles.footerLeft}>
+            <IconSymbol name="calendar" size={14} color={colors.text + "60"} />
+            <Text style={[styles.orderDate, { color: colors.text + "60" }]}>
               {formatDate(order.created_at || '')}
             </Text>
           </View>
-          
-          <View style={styles.detailRow}>
-            <IconSymbol name="bag" size={16} color={colors.text + "80"} />
-            <Text style={[styles.detailText, { color: colors.text + "80" }]}>
-              {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
-            </Text>
-          </View>
+          <Text style={[styles.orderTotal, { color: colors.primary }]}>
+            ${order.total_amount.toFixed(2)}
+          </Text>
         </View>
-
-        <View style={styles.orderFooter}>
-          <View>
-            <Text style={[styles.totalLabel, { color: colors.text + "80" }]}>
-              Total Amount
-            </Text>
-            <Text style={[styles.totalAmount, { color: colors.primary }]}>
-              ${order.total_amount.toFixed(2)}
-            </Text>
-          </View>
-          
-          <Pressable
-            onPress={(e) => {
-              e.stopPropagation();
-              console.log('View details pressed for order:', order.id);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
-            style={({ pressed }) => [
-              styles.viewButton,
-              {
-                backgroundColor: colors.primary,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <Text style={styles.viewButtonText}>View Details</Text>
-            <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
-          </Pressable>
-        </View>
-      </Pressable>
+      </GlassView>
     </Animated.View>
   );
 };
 
-export default function OrdersScreen() {
+const OrdersScreen = () => {
   const { colors } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const loadOrders = useCallback(async () => {
@@ -211,10 +242,11 @@ export default function OrdersScreen() {
   }, [user]);
 
   useEffect(() => {
-    // Entrance animation and load orders - only run once on mount
+    console.log('=== ORDERS SCREEN MOUNTED ===');
+    
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 500,
+      duration: 600,
       useNativeDriver: true,
     }).start();
 
@@ -222,25 +254,23 @@ export default function OrdersScreen() {
   }, [fadeAnim, loadOrders]);
 
   const onRefresh = () => {
-    console.log('Refreshing orders');
+    console.log('Refreshing orders...');
     setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     loadOrders();
   };
 
   const renderEmptyState = () => (
-    <Animated.View style={[styles.emptyContainer, { opacity: fadeAnim }]}>
-      <View style={styles.emptyIconContainer}>
-        <IconSymbol name="bag" size={80} color={colors.text + "40"} />
-      </View>
+    <View style={styles.emptyContainer}>
+      <IconSymbol name="bag" size={80} color={colors.text + "40"} />
       <Text style={[styles.emptyTitle, { color: colors.text }]}>
-        No orders yet
+        No Orders Yet
       </Text>
       <Text style={[styles.emptySubtitle, { color: colors.text + "80" }]}>
-        Start shopping to see your orders here
+        Your order history will appear here
       </Text>
       <Pressable
         onPress={() => {
-          console.log('Start shopping button pressed');
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           router.push("/(tabs)/(home)");
         }}
@@ -252,15 +282,14 @@ export default function OrdersScreen() {
           },
         ]}
       >
-        <IconSymbol name="bag" size={20} color="#FFFFFF" />
         <Text style={styles.shopButtonText}>Start Shopping</Text>
       </Pressable>
-    </Animated.View>
+    </View>
   );
 
   if (!user) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <Stack.Screen
           options={{
             headerShown: true,
@@ -272,16 +301,16 @@ export default function OrdersScreen() {
           }}
         />
         <View style={styles.emptyContainer}>
-          <IconSymbol name="person.crop.circle.badge.exclamationmark" size={80} color={colors.text + "40"} />
+          <IconSymbol name="person.crop.circle" size={80} color={colors.text + "40"} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            Login Required
+            Please Log In
           </Text>
           <Text style={[styles.emptySubtitle, { color: colors.text + "80" }]}>
-            Please login to view your orders
+            Log in to view your order history
           </Text>
           <Pressable
             onPress={() => {
-              console.log('Login button pressed from orders');
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               router.push("/login");
             }}
             style={({ pressed }) => [
@@ -292,53 +321,34 @@ export default function OrdersScreen() {
               },
             ]}
           >
-            <Text style={styles.shopButtonText}>Login</Text>
+            <Text style={styles.shopButtonText}>Log In</Text>
           </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (loading) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
-        <Stack.Screen
-          options={{
-            headerShown: true,
-            title: "My Orders",
-            headerStyle: {
-              backgroundColor: colors.card,
-            },
-            headerTintColor: colors.text,
-          }}
-        />
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: "My Orders",
+          headerStyle: {
+            backgroundColor: colors.card,
+          },
+          headerTintColor: colors.text,
+          headerShadowVisible: false,
+        }}
+      />
+
+      {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.text }]}>
             Loading your orders...
           </Text>
         </View>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: "My Orders",
-          headerStyle: {
-            backgroundColor: Platform.OS === "android" ? colors.card : "transparent",
-          },
-          headerTransparent: Platform.OS === "ios",
-          headerBlurEffect: "regular",
-          headerTintColor: colors.text,
-        }}
-      />
-
-      {orders.length === 0 ? (
-        renderEmptyState()
       ) : (
         <ScrollView
           style={styles.scrollView}
@@ -353,28 +363,37 @@ export default function OrdersScreen() {
           }
         >
           <Animated.View style={{ opacity: fadeAnim }}>
-            <View style={styles.ordersHeader}>
-              <Text style={[styles.ordersCount, { color: colors.text }]}>
-                {orders.length} {orders.length === 1 ? 'Order' : 'Orders'}
-              </Text>
-            </View>
-            
-            <View style={styles.ordersContainer}>
-              {orders.map((order, index) => (
-                <OrderCard
-                  key={order.id}
-                  order={order}
-                  index={index}
-                  colors={colors}
-                />
-              ))}
-            </View>
+            {orders.length === 0 ? (
+              renderEmptyState()
+            ) : (
+              <>
+                <View style={styles.header}>
+                  <Text style={[styles.title, { color: colors.text }]}>
+                    Order History
+                  </Text>
+                  <Text style={[styles.subtitle, { color: colors.text + "80" }]}>
+                    {orders.length} order{orders.length !== 1 ? 's' : ''}
+                  </Text>
+                </View>
+
+                <View style={styles.ordersContainer}>
+                  {orders.map((order, index) => (
+                    <OrderCard
+                      key={order.id}
+                      order={order}
+                      index={index}
+                      colors={colors}
+                    />
+                  ))}
+                </View>
+              </>
+            )}
           </Animated.View>
         </ScrollView>
       )}
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -384,40 +403,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+  header: {
+    marginTop: 20,
+    marginBottom: 24,
   },
-  loadingText: {
-    marginTop: 16,
+  title: {
+    fontSize: 28,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  subtitle: {
     fontSize: 16,
   },
-  ordersHeader: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 80 : 20,
-    paddingBottom: 16,
-  },
-  ordersCount: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
   ordersContainer: {
-    paddingHorizontal: 20,
     gap: 16,
   },
   orderCard: {
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 20,
-    marginBottom: 16,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
       },
       android: {
         elevation: 4,
@@ -433,10 +445,7 @@ const styles = StyleSheet.create({
   orderIdContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-  },
-  orderIdLabel: {
-    fontSize: 14,
+    gap: 6,
   },
   orderId: {
     fontSize: 16,
@@ -445,75 +454,101 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    gap: 6,
   },
   statusText: {
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  itemsContainer: {
+    marginBottom: 16,
+  },
+  orderItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  itemName: {
+    fontSize: 15,
+    flex: 1,
+  },
+  itemPrice: {
+    fontSize: 15,
     fontWeight: "600",
   },
-  divider: {
-    height: 1,
-    marginBottom: 16,
+  moreItems: {
+    fontSize: 13,
+    fontStyle: "italic",
+    marginTop: 4,
   },
-  orderDetails: {
-    gap: 12,
-    marginBottom: 16,
+  paymentInfo: {
+    paddingTop: 12,
+    marginBottom: 12,
+    gap: 8,
   },
-  detailRow: {
+  paymentRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  detailText: {
+  paymentLabel: {
     fontSize: 14,
+    fontWeight: "500",
+  },
+  paymentDetail: {
+    fontSize: 13,
+    marginLeft: 4,
+  },
+  paymentStatus: {
+    fontSize: 13,
+    fontWeight: "600",
+    textTransform: "capitalize",
   },
   orderFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingTop: 16,
+    borderTopWidth: 1,
   },
-  totalLabel: {
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  totalAmount: {
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  viewButton: {
+  footerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
     gap: 6,
   },
-  viewButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
+  orderDate: {
+    fontSize: 13,
+  },
+  orderTotal: {
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
   },
   emptyContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 40,
-  },
-  emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "rgba(0, 0, 0, 0.05)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
+    paddingVertical: 80,
+    paddingHorizontal: 40,
   },
   emptyTitle: {
     fontSize: 24,
     fontWeight: "bold",
+    marginTop: 24,
     marginBottom: 8,
   },
   emptySubtitle: {
@@ -522,12 +557,9 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   shopButton: {
-    flexDirection: "row",
-    alignItems: "center",
     paddingHorizontal: 32,
     paddingVertical: 14,
     borderRadius: 16,
-    gap: 8,
   },
   shopButtonText: {
     color: "#FFFFFF",
@@ -535,3 +567,5 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+
+export default OrdersScreen;
