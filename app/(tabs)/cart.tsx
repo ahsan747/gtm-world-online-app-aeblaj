@@ -434,8 +434,11 @@ export default function CartScreen() {
               </View>
               
               <TouchableOpacity
-                onPress={handleCheckout}
-                activeOpacity={0.8}
+                onPress={() => {
+                  console.log("=== CHECKOUT BUTTON TAPPED ===");
+                  handleCheckout();
+                }}
+                activeOpacity={0.7}
                 style={[
                   styles.checkoutButton,
                   {
@@ -471,6 +474,7 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     marginRight: 16,
+    padding: 4,
   },
   clearButtonText: {
     fontSize: 16,
@@ -659,11 +663,24 @@ const styles = StyleSheet.create({
   checkoutButton: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 16,
     gap: 8,
     marginLeft: 12,
+    minWidth: 140,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
   checkoutButtonText: {
     color: "#FFFFFF",
