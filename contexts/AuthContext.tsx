@@ -70,17 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const normalizedEmail = email.trim().toLowerCase();
       console.log('Normalized email:', normalizedEmail);
       
-      // Check if user already exists
-      const { data: existingUser, error: checkError } = await supabase.auth.signInWithPassword({
-        email: normalizedEmail,
-        password,
-      });
-
-      if (existingUser.user) {
-        console.log('User already exists and credentials are correct');
-        throw new Error('An account with this email already exists. Please login instead.');
-      }
-
+      // Attempt to sign up
       console.log('Creating new user account...');
       const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
@@ -94,10 +84,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) {
-        console.error('Signup error:', error.message);
+        console.error('Signup error:', error.message, error);
         
         // Handle specific error cases
-        if (error.message.includes('already registered')) {
+        if (error.message.includes('already registered') || error.message.includes('User already registered')) {
           throw new Error('An account with this email already exists. Please login instead.');
         }
         
@@ -106,25 +96,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       console.log('Signup response:', data);
 
-      // Create user profile in database
-      if (data.user) {
-        console.log('User created, now creating profile...');
+      // Check if this is a repeated signup (user already exists)
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        console.log('User already exists (repeated signup detected)');
+        throw new Error('An account with this email already exists. Please login instead.');
+      }
+
+      // Create user profile in database if user was created
+      if (data.user && data.user.identities && data.user.identities.length > 0) {
+        console.log('New user created, now creating profile...');
         try {
           await createUserProfile(data.user.id, normalizedEmail, displayName);
           console.log('User profile created successfully');
         } catch (profileError: any) {
           console.error('Error creating user profile:', profileError);
-          // Check if profile already exists
-          if (!profileError.message?.includes('duplicate') && !profileError.message?.includes('unique')) {
-            console.warn('Profile creation failed but continuing with signup');
-          }
+          // Don't fail signup if profile creation fails
+          console.warn('Profile creation failed but continuing with signup');
         }
       }
 
       // Check if email confirmation is required
       if (data.user && !data.session) {
         console.log('Email confirmation required');
-        throw new Error('Please check your email to confirm your account before logging in.');
+        throw new Error('CONFIRM_EMAIL:Please check your email to confirm your account before logging in.');
       }
 
       console.log('User signed up successfully');

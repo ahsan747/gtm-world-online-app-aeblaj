@@ -82,6 +82,24 @@ export default function SignupScreen() {
       let errorMessage = 'Failed to create account. Please try again.';
       
       if (error.message) {
+        // Check if it's the email confirmation message
+        if (error.message.startsWith('CONFIRM_EMAIL:')) {
+          const message = error.message.replace('CONFIRM_EMAIL:', '');
+          Alert.alert(
+            'Account Created! 🎉',
+            message,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  console.log('Navigating to login screen');
+                  router.replace('/login');
+                },
+              },
+            ]
+          );
+          return;
+        }
         errorMessage = error.message;
       }
       

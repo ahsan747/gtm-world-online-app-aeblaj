@@ -194,10 +194,24 @@ export const createContactMessage = async (message: ContactMessage) => {
   }
 };
 
-// User Profiles (optional - for storing additional user data)
+// User Profiles
 export const createUserProfile = async (userId: string, email: string, displayName?: string) => {
   try {
     console.log('Creating user profile in Supabase');
+    
+    // First check if profile already exists
+    const { data: existingProfile } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (existingProfile) {
+      console.log('User profile already exists, skipping creation');
+      return existingProfile;
+    }
+
+    // Create new profile
     const { data, error } = await supabase
       .from('user_profiles')
       .insert([
@@ -212,6 +226,17 @@ export const createUserProfile = async (userId: string, email: string, displayNa
       .single();
 
     if (error) {
+      // Check if it's a duplicate key error
+      if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
+        console.log('Profile already exists (duplicate key), fetching existing profile');
+        const { data: existingData } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+        return existingData;
+      }
+      
       console.error('Error creating user profile:', error);
       throw error;
     }
