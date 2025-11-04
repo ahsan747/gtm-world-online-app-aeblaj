@@ -16,6 +16,7 @@ import {
   Image,
   Alert,
   Animated,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
@@ -413,12 +414,11 @@ export default function CartScreen() {
             <View style={{ height: 20 }} />
           </ScrollView>
 
-          <Animated.View 
+          <View 
             style={[
               styles.footer, 
               { 
                 backgroundColor: colors.card,
-                opacity: fadeAnim,
                 borderTopColor: colors.border,
               }
             ]}
@@ -433,17 +433,13 @@ export default function CartScreen() {
                 </Text>
               </View>
               
-              <Pressable
-                onPress={() => {
-                  console.log("=== CHECKOUT BUTTON TAPPED ===");
-                  handleCheckout();
-                }}
-                style={({ pressed }) => [
+              <TouchableOpacity
+                onPress={handleCheckout}
+                activeOpacity={0.8}
+                style={[
                   styles.checkoutButton,
                   {
                     backgroundColor: colors.primary,
-                    opacity: pressed ? 0.8 : 1,
-                    transform: [{ scale: pressed ? 0.95 : 1 }],
                   },
                 ]}
               >
@@ -451,9 +447,9 @@ export default function CartScreen() {
                   Checkout
                 </Text>
                 <IconSymbol name="arrow.right" size={20} color="#FFFFFF" />
-              </Pressable>
+              </TouchableOpacity>
             </View>
-          </Animated.View>
+          </View>
         </View>
       )}
     </SafeAreaView>
@@ -628,10 +624,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   footer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
     borderTopWidth: 1,
     paddingBottom: Platform.OS === "ios" ? 110 : 100,
     ...Platform.select({
