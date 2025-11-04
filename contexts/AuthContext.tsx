@@ -62,10 +62,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string, displayName?: string) => {
     try {
-      console.log('Signing up user:', email);
+      console.log('=== SIGNUP PROCESS STARTED ===');
+      console.log('Email:', email);
+      console.log('Display Name:', displayName);
       
+      // Normalize email (trim and lowercase)
+      const normalizedEmail = email.trim().toLowerCase();
+      console.log('Normalized email:', normalizedEmail);
+      
+      // Check if user already exists
+      const { data: existingUser, error: checkError } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
+
+      if (existingUser.user) {
+        console.log('User already exists and credentials are correct');
+        throw new Error('An account with this email already exists. Please login instead.');
+      }
+
+      console.log('Creating new user account...');
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           emailRedirectTo: 'https://natively.dev/email-confirmed',
@@ -77,19 +95,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         console.error('Signup error:', error.message);
+        
+        // Handle specific error cases
+        if (error.message.includes('already registered')) {
+          throw new Error('An account with this email already exists. Please login instead.');
+        }
+        
         throw error;
       }
 
-      console.log('Signup successful:', data.user?.email);
+      console.log('Signup response:', data);
 
       // Create user profile in database
       if (data.user) {
+        console.log('User created, now creating profile...');
         try {
-          await createUserProfile(data.user.id, email, displayName);
+          await createUserProfile(data.user.id, normalizedEmail, displayName);
           console.log('User profile created successfully');
-        } catch (profileError) {
+        } catch (profileError: any) {
           console.error('Error creating user profile:', profileError);
-          // Don't throw - profile creation is not critical for signup
+          // Check if profile already exists
+          if (!profileError.message?.includes('duplicate') && !profileError.message?.includes('unique')) {
+            console.warn('Profile creation failed but continuing with signup');
+          }
         }
       }
 
@@ -108,19 +136,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('Signing in user:', email);
+      console.log('=== SIGNIN PROCESS STARTED ===');
+      console.log('Email:', email);
+      
+      // Normalize email (trim and lowercase)
+      const normalizedEmail = email.trim().toLowerCase();
+      console.log('Normalized email:', normalizedEmail);
       
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password,
       });
 
       if (error) {
-        console.error('Sign in error:', error.message);
+        console.error('Sign in error:', error.message, error);
+        
+        // Provide more specific error messages
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password. Please check your credentials and try again.');
+        } else if (error.message.includes('Email not confirmed')) {
+          throw new Error('Please verify your email address before logging in. Check your inbox for the confirmation email.');
+        }
+        
         throw error;
       }
 
-      console.log('Sign in successful:', data.user?.email);
+      if (!data.user) {
+        throw new Error('Login failed. Please try again.');
+      }
+
+      console.log('Sign in successful:', data.user.email);
     } catch (error: any) {
       console.error('Sign in error:', error);
       throw error;

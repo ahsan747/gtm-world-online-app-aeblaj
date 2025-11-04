@@ -1,10 +1,9 @@
 
+// Firebase configuration is no longer used
+// The app now uses Supabase for authentication and database
+// This file is kept for reference only
+
 import { initializeApp } from 'firebase/app';
-import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB6eHOr4yO54zIQ-SFNbAUu4r2XBvLfp_8",
@@ -16,24 +15,9 @@ const firebaseConfig = {
   measurementId: "G-TRYSESQ8BG"
 };
 
-// Initialize Firebase
+// Initialize Firebase (not used in the app anymore)
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth with AsyncStorage persistence for React Native
-let auth;
-if (Platform.OS === 'web') {
-  auth = getAuth(app);
-} else {
-  auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage)
-  });
-}
+console.log('⚠️ Firebase is configured but not actively used. The app uses Supabase for authentication and database.');
 
-// Initialize Firestore
-const db = getFirestore(app);
-
-// Initialize Storage
-const storage = getStorage(app);
-
-export { auth, db, storage };
 export default app;

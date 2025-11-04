@@ -38,7 +38,7 @@ export default function LoginScreen() {
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(email.trim())) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
@@ -65,20 +65,7 @@ export default function LoginScreen() {
       let errorMessage = 'Failed to login. Please try again.';
       
       if (error.message) {
-        // Display the actual error message from Supabase
-        if (error.message.includes('Invalid login credentials')) {
-          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
-        } else if (error.message.includes('Email not confirmed')) {
-          errorMessage = 'Please verify your email address before logging in. Check your inbox for the confirmation email.';
-        } else {
-          errorMessage = error.message;
-        }
-      } else if (error.code === 'invalid_credentials') {
-        errorMessage = 'Invalid email or password';
-      } else if (error.code === 'user_not_found') {
-        errorMessage = 'No account found with this email. Please sign up first.';
-      } else if (error.code === 'email_not_confirmed') {
-        errorMessage = 'Please verify your email address before logging in.';
+        errorMessage = error.message;
       }
       
       Alert.alert('Login Failed', errorMessage);
@@ -113,7 +100,7 @@ export default function LoginScreen() {
             </LinearGradient>
             <Text style={[styles.title, { color: theme.colors.text }]}>Welcome Back</Text>
             <Text style={[styles.subtitle, { color: theme.dark ? '#98989D' : '#666' }]}>
-              Sign in to GTM World Online
+              Sign in to GTM Store
             </Text>
           </View>
 

@@ -336,6 +336,19 @@ const CheckoutScreen = () => {
               },
             ]}
           >
+            {/* Demo Payment Notice */}
+            <View style={[styles.demoNotice, { backgroundColor: "#FF9500" + "15", borderColor: "#FF9500" }]}>
+              <IconSymbol name="exclamationmark.triangle.fill" size={24} color="#FF9500" />
+              <View style={styles.demoNoticeContent}>
+                <Text style={[styles.demoNoticeTitle, { color: colors.text }]}>
+                  Demo Payment Mode
+                </Text>
+                <Text style={[styles.demoNoticeText, { color: colors.text + "90" }]}>
+                  This is a demonstration app. Payment methods are simulated and no real charges will be made. Do not enter your actual payment credentials.
+                </Text>
+              </View>
+            </View>
+
             {/* Order Summary */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -506,6 +519,27 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingTop: 20,
+  },
+  demoNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
+    borderWidth: 1.5,
+  },
+  demoNoticeContent: {
+    flex: 1,
+  },
+  demoNoticeTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  demoNoticeText: {
+    fontSize: 13,
+    lineHeight: 20,
   },
   section: {
     marginBottom: 30,

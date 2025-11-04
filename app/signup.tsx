@@ -52,7 +52,7 @@ export default function SignupScreen() {
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(email.trim())) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
@@ -83,12 +83,6 @@ export default function SignupScreen() {
       
       if (error.message) {
         errorMessage = error.message;
-      } else if (error.code === 'user_already_exists') {
-        errorMessage = 'This email is already registered. Please login instead.';
-      } else if (error.code === 'invalid_email') {
-        errorMessage = 'Invalid email address';
-      } else if (error.code === 'weak_password') {
-        errorMessage = 'Password is too weak. Please use a stronger password.';
       }
       
       Alert.alert('Signup Failed', errorMessage);
@@ -123,7 +117,7 @@ export default function SignupScreen() {
             </LinearGradient>
             <Text style={[styles.title, { color: theme.colors.text }]}>Create Account</Text>
             <Text style={[styles.subtitle, { color: theme.dark ? '#98989D' : '#666' }]}>
-              Join GTM World Online today
+              Join GTM Store today
             </Text>
           </View>
 
