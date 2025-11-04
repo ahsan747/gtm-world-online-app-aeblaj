@@ -22,7 +22,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { useCart } from "@/contexts/CartContext";
 import * as Haptics from "expo-haptics";
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { createUserProfile, getUserProfile } from "@/services/database";
+import { getUserProfile, updateUserProfile } from "@/services/database";
 
 const CheckoutScreen = () => {
   const { colors } = useTheme();
@@ -159,13 +159,23 @@ const CheckoutScreen = () => {
       setIsProcessing(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      console.log('Creating/updating user profile...');
-      // Create or update user profile
+      console.log('Saving shipping information to user profile...');
+      // Save shipping information to user profile
       if (user?.id) {
         try {
-          await createUserProfile(user.id, email, fullName);
+          await updateUserProfile(user.id, {
+            display_name: fullName,
+            phone,
+            address,
+            city,
+            state,
+            zip_code: zipCode,
+            country,
+          });
+          console.log('Shipping information saved successfully');
         } catch (error: any) {
-          console.log('User profile may already exist:', error.message);
+          console.error('Error saving shipping information:', error);
+          // Don't block checkout if profile update fails
         }
       }
 

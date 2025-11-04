@@ -415,33 +415,6 @@ const PaymentProcessScreen = () => {
               </View>
             )}
 
-            {/* Setup Instructions for PayPal */}
-            {paymentMethod === 'paypal' && (
-              <View style={[styles.setupNotice, { backgroundColor: "#0070BA" + "15", borderColor: "#0070BA" }]}>
-                <IconSymbol name="info.circle.fill" size={24} color="#0070BA" />
-                <View style={styles.setupTextContainer}>
-                  <Text style={[styles.setupTitle, { color: colors.text }]}>
-                    PayPal Integration Ready
-                  </Text>
-                  <Text style={[styles.setupText, { color: colors.text + "90" }]}>
-                    To enable real PayPal payments:
-                  </Text>
-                  <Text style={[styles.setupStep, { color: colors.text + "80" }]}>
-                    1. Get PayPal credentials from developer.paypal.com
-                  </Text>
-                  <Text style={[styles.setupStep, { color: colors.text + "80" }]}>
-                    2. Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to Supabase Edge Function secrets
-                  </Text>
-                  <Text style={[styles.setupStep, { color: colors.text + "80" }]}>
-                    3. Set PAYPAL_MODE to &apos;sandbox&apos; or &apos;live&apos;
-                  </Text>
-                  <Text style={[styles.setupNote, { color: colors.text + "70" }]}>
-                    Currently using simulation mode for demo purposes.
-                  </Text>
-                </View>
-              </View>
-            )}
-
             {/* Amount Card */}
             <GlassView
               style={[styles.amountCard, { backgroundColor: colors.card }]}
@@ -696,38 +669,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingTop: 20,
-  },
-  setupNotice: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 20,
-    borderWidth: 1.5,
-  },
-  setupTextContainer: {
-    flex: 1,
-  },
-  setupTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  setupText: {
-    fontSize: 14,
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  setupStep: {
-    fontSize: 13,
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  setupNote: {
-    fontSize: 12,
-    marginTop: 8,
-    fontStyle: "italic",
   },
   demoCredentialsBox: {
     flexDirection: "row",
