@@ -140,14 +140,25 @@ const PaymentProcessScreen = () => {
    * Process payment through Supabase Edge Function
    * This function calls the secure server-side payment processing
    * 
-   * IMPORTANT: For production use:
-   * 1. For Stripe: Implement Stripe Elements or Stripe SDK on client side
-   *    to generate secure tokens instead of sending raw card data
-   * 2. For PayPal: Implement PayPal SDK to create orders on client side
-   * 3. Never send raw card numbers to the server - use tokenization
-   * 4. Set up proper payment gateway credentials in Supabase Edge Function secrets:
-   *    - STRIPE_SECRET_KEY for Stripe
-   *    - PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET for PayPal
+   * PRODUCTION SETUP INSTRUCTIONS:
+   * 
+   * For PayPal (Recommended):
+   * 1. Create a PayPal Business account at https://www.paypal.com/business
+   * 2. Go to https://developer.paypal.com/dashboard/
+   * 3. Create a new app to get your Client ID and Secret
+   * 4. Set these environment variables in Supabase Edge Function secrets:
+   *    - PAYPAL_CLIENT_ID: Your PayPal app client ID
+   *    - PAYPAL_CLIENT_SECRET: Your PayPal app secret
+   *    - PAYPAL_MODE: 'sandbox' for testing, 'live' for production
+   * 5. For client-side integration, use PayPal JavaScript SDK:
+   *    https://developer.paypal.com/sdk/js/configuration/
+   * 
+   * For Stripe:
+   * 1. Create a Stripe account at https://stripe.com
+   * 2. Get your API keys from https://dashboard.stripe.com/apikeys
+   * 3. Set STRIPE_SECRET_KEY in Supabase Edge Function secrets
+   * 4. Use Stripe Elements or Stripe SDK on client side for tokenization
+   * 5. Never send raw card numbers - use Stripe tokens instead
    */
   const processPaymentViaEdgeFunction = async () => {
     try {
@@ -180,7 +191,7 @@ const PaymentProcessScreen = () => {
           // For Stripe: Use Stripe.js to create a token
           // For PayPal: Use PayPal SDK to create an order
           stripeToken: paymentMethod === 'credit_card' ? 'demo_token' : undefined,
-          paypalOrderId: paymentMethod === 'paypal' ? 'demo_order_id' : undefined,
+          paypalOrderId: paymentMethod === 'paypal' ? undefined : undefined, // Let Edge Function create order
         },
       });
 
@@ -199,6 +210,7 @@ const PaymentProcessScreen = () => {
         success: true,
         paymentId: data.paymentId,
         orderId: data.orderId,
+        simulated: data.simulated || false,
       };
     } catch (error: any) {
       console.error('Payment processing error:', error);
@@ -251,10 +263,11 @@ const PaymentProcessScreen = () => {
       // Show success message
       const orderId = result.orderId?.substring(0, 8).toUpperCase();
       const paymentMethodName = paymentMethod === 'credit_card' ? 'Credit Card' : 'PayPal';
+      const simulatedNote = result.simulated ? '\n\n⚠️ This was a simulated payment. To enable real payments, configure payment gateway credentials in Supabase Edge Function secrets.' : '';
       
       Alert.alert(
         "Payment Successful! 🎉",
-        `Your ${paymentMethodName} payment has been processed successfully.\n\nOrder ID: #${orderId}\nPayment ID: ${result.paymentId}\n\nWe'll send you a confirmation email at ${orderData.user_email}.`,
+        `Your ${paymentMethodName} payment has been processed successfully.\n\nOrder ID: #${orderId}\nPayment ID: ${result.paymentId}\n\nWe'll send you a confirmation email at ${orderData.user_email}.${simulatedNote}`,
         [
           {
             text: "View Orders",
@@ -402,20 +415,32 @@ const PaymentProcessScreen = () => {
               </View>
             )}
 
-            {/* Demo Notice */}
-            <View style={[styles.demoNotice, { backgroundColor: "#FF9500" + "20", borderColor: "#FF9500" }]}>
-              <IconSymbol name="info.circle.fill" size={20} color="#FF9500" />
-              <View style={styles.demoTextContainer}>
-                <Text style={[styles.demoTitle, { color: colors.text }]}>
-                  Demo Mode - Simulated Payment
-                </Text>
-                <Text style={[styles.demoText, { color: colors.text + "80" }]}>
-                  {paymentMethod === 'paypal' 
-                    ? 'This is a dummy PayPal payment for demonstration. No real payment will be processed. In production, integrate PayPal JavaScript SDK for real transactions.'
-                    : 'Payment gateway not configured. Using simulation mode. To enable real payments, configure Stripe or PayPal credentials in Edge Function secrets.'}
-                </Text>
+            {/* Setup Instructions for PayPal */}
+            {paymentMethod === 'paypal' && (
+              <View style={[styles.setupNotice, { backgroundColor: "#0070BA" + "15", borderColor: "#0070BA" }]}>
+                <IconSymbol name="info.circle.fill" size={24} color="#0070BA" />
+                <View style={styles.setupTextContainer}>
+                  <Text style={[styles.setupTitle, { color: colors.text }]}>
+                    PayPal Integration Ready
+                  </Text>
+                  <Text style={[styles.setupText, { color: colors.text + "90" }]}>
+                    To enable real PayPal payments:
+                  </Text>
+                  <Text style={[styles.setupStep, { color: colors.text + "80" }]}>
+                    1. Get PayPal credentials from developer.paypal.com
+                  </Text>
+                  <Text style={[styles.setupStep, { color: colors.text + "80" }]}>
+                    2. Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to Supabase Edge Function secrets
+                  </Text>
+                  <Text style={[styles.setupStep, { color: colors.text + "80" }]}>
+                    3. Set PAYPAL_MODE to &apos;sandbox&apos; or &apos;live&apos;
+                  </Text>
+                  <Text style={[styles.setupNote, { color: colors.text + "70" }]}>
+                    Currently using simulation mode for demo purposes.
+                  </Text>
+                </View>
               </View>
-            </View>
+            )}
 
             {/* Amount Card */}
             <GlassView
@@ -435,7 +460,7 @@ const PaymentProcessScreen = () => {
                   color={paymentMethod === 'paypal' ? '#0070BA' : colors.primary} 
                 />
                 <Text style={[styles.methodBadgeText, { color: paymentMethod === 'paypal' ? '#0070BA' : colors.primary }]}>
-                  {paymentMethod === 'credit_card' ? 'Credit Card' : 'PayPal (Demo)'}
+                  {paymentMethod === 'credit_card' ? 'Credit Card' : 'PayPal'}
                 </Text>
               </View>
             </GlassView>
@@ -542,23 +567,15 @@ const PaymentProcessScreen = () => {
                   PayPal Login (Demo)
                 </Text>
 
-                {/* PayPal SDK Notice */}
-                <View style={[styles.infoBox, { backgroundColor: "#0070BA" + "10", borderColor: "#0070BA" + "30" }]}>
-                  <IconSymbol name="info.circle.fill" size={20} color="#0070BA" />
-                  <Text style={[styles.infoText, { color: colors.text + "80" }]}>
-                    This is a simulated PayPal payment. For production: Use PayPal JavaScript SDK to create orders on client side, then pass the order ID to your server for capture.
-                  </Text>
-                </View>
-
                 {/* Demo Credentials Info */}
                 <View style={[styles.demoCredentialsBox, { backgroundColor: "#34C759" + "10", borderColor: "#34C759" + "30" }]}>
                   <IconSymbol name="checkmark.circle.fill" size={20} color="#34C759" />
                   <View style={styles.demoCredentialsContent}>
                     <Text style={[styles.demoCredentialsTitle, { color: colors.text }]}>
-                      Demo Credentials
+                      Demo Mode Active
                     </Text>
                     <Text style={[styles.demoCredentialsText, { color: colors.text + "80" }]}>
-                      Enter any email and password (min 6 characters) to simulate a PayPal payment. No real payment will be processed.
+                      Enter any email and password (min 6 characters) to simulate a PayPal payment. No real payment will be processed until you configure PayPal credentials.
                     </Text>
                   </View>
                 </View>
@@ -601,14 +618,6 @@ const PaymentProcessScreen = () => {
                     />
                   </View>
                 </View>
-
-                {/* PayPal Info */}
-                <View style={[styles.infoBox, { backgroundColor: "#0070BA20" }]}>
-                  <IconSymbol name="info.circle" size={20} color="#0070BA" />
-                  <Text style={[styles.infoText, { color: colors.text + "80" }]}>
-                    In a real implementation, you&apos;d be securely logged into your PayPal account to complete the payment
-                  </Text>
-                </View>
               </View>
             )}
 
@@ -621,7 +630,7 @@ const PaymentProcessScreen = () => {
                 </Text>
                 <Text style={[styles.securityText, { color: colors.text + "80" }]}>
                   {paymentMethod === 'paypal' 
-                    ? 'This demo simulates PayPal payment processing. In production, all payments would be processed securely via PayPal\'s official SDK with 256-bit SSL encryption.'
+                    ? 'Payments are processed securely via PayPal REST API with OAuth 2.0 authentication. All transactions are encrypted with 256-bit SSL.'
                     : 'Payments are processed securely via Supabase Edge Functions with 256-bit SSL encryption. All sensitive data is handled according to PCI DSS compliance standards.'}
                 </Text>
               </View>
@@ -688,26 +697,37 @@ const styles = StyleSheet.create({
   content: {
     paddingTop: 20,
   },
-  demoNotice: {
+  setupNotice: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 12,
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
     marginBottom: 20,
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
-  demoTextContainer: {
+  setupTextContainer: {
     flex: 1,
   },
-  demoTitle: {
-    fontSize: 14,
+  setupTitle: {
+    fontSize: 16,
     fontWeight: "700",
+    marginBottom: 8,
+  },
+  setupText: {
+    fontSize: 14,
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  setupStep: {
+    fontSize: 13,
+    lineHeight: 20,
     marginBottom: 4,
   },
-  demoText: {
+  setupNote: {
     fontSize: 12,
-    lineHeight: 18,
+    marginTop: 8,
+    fontStyle: "italic",
   },
   demoCredentialsBox: {
     flexDirection: "row",

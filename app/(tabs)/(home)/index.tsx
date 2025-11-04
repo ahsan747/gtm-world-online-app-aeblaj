@@ -12,6 +12,7 @@ import {
   TextInput,
   Animated,
   Alert,
+  FlatList,
 } from "react-native";
 import { useCart } from "@/contexts/CartContext";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -84,7 +85,7 @@ const CategoryItem = ({ category, index, selectedCategory, onSelect, colors }: a
   );
 };
 
-// Product Card Component
+// Product Card Component for Grid
 const ProductCard = ({ product, index, onAddToCart, colors, router }: any) => {
   const animValue = useRef(new Animated.Value(0)).current;
 
@@ -101,17 +102,20 @@ const ProductCard = ({ product, index, onAddToCart, colors, router }: any) => {
 
   return (
     <Animated.View
-      style={{
-        opacity: animValue,
-        transform: [
-          {
-            scale: animValue.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0.8, 1],
-            }),
-          },
-        ],
-      }}
+      style={[
+        styles.productCardWrapper,
+        {
+          opacity: animValue,
+          transform: [
+            {
+              scale: animValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.8, 1],
+              }),
+            },
+          ],
+        },
+      ]}
     >
       <Pressable
         onPress={() => {
@@ -300,7 +304,7 @@ export default function HomeScreen() {
   const renderHeaderLeft = () => (
     <View style={styles.headerLeft}>
       <Text style={[styles.headerTitle, { color: colors.text }]}>
-        GTM World
+        GTM Store
       </Text>
     </View>
   );
@@ -324,7 +328,7 @@ export default function HomeScreen() {
         <View style={styles.welcomeContent}>
           <View>
             <Text style={styles.welcomeTitle}>
-              {user ? `Welcome back, ${user.displayName || "Beauty Lover"}!` : "Welcome to GTM World"}
+              {user ? `Welcome back, ${user.displayName || "Beauty Lover"}!` : "Welcome to GTM Store"}
             </Text>
             <Text style={styles.welcomeSubtitle}>
               Discover premium cosmetics for your beauty routine
@@ -366,6 +370,16 @@ export default function HomeScreen() {
         </Pressable>
       )}
     </Animated.View>
+  );
+
+  const renderProductItem = ({ item, index }: { item: Product; index: number }) => (
+    <ProductCard
+      product={item}
+      index={index}
+      onAddToCart={handleAddToCart}
+      colors={colors}
+      router={router}
+    />
   );
 
   return (
@@ -425,18 +439,16 @@ export default function HomeScreen() {
             </Text>
           </View>
           
-          <View style={styles.productsGrid}>
-            {filteredProducts.map((product, index) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                index={index}
-                onAddToCart={handleAddToCart}
-                colors={colors}
-                router={router}
-              />
-            ))}
-          </View>
+          {/* Grid Layout with 2 products per row */}
+          <FlatList
+            data={filteredProducts}
+            renderItem={renderProductItem}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            scrollEnabled={false}
+            columnWrapperStyle={styles.gridRow}
+            contentContainerStyle={styles.gridContainer}
+          />
         </View>
 
         {filteredProducts.length === 0 && (
@@ -633,16 +645,18 @@ const styles = StyleSheet.create({
   productsCount: {
     fontSize: 14,
   },
-  productsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  gridContainer: {
     paddingHorizontal: 8,
-    gap: 12,
+  },
+  gridRow: {
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+    marginBottom: 16,
+  },
+  productCardWrapper: {
+    width: "48%",
   },
   productCard: {
-    width: "47%",
-    marginHorizontal: 8,
-    marginBottom: 16,
     borderRadius: 20,
     overflow: "hidden",
     ...Platform.select({
