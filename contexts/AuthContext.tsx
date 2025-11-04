@@ -47,10 +47,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       console.log('Auth state changed:', _event, session?.user?.email || 'No user');
       setSession(session);
       setUser(session?.user ?? null);
+      
+      // If user just signed in, ensure profile exists
+      if (_event === 'SIGNED_IN' && session?.user) {
+        try {
+          await createUserProfile(
+            session.user.id, 
+            session.user.email || '', 
+            session.user.user_metadata?.display_name
+          );
+        } catch (error) {
+          console.error('Error ensuring profile exists:', error);
+        }
+      }
+      
       setLoading(false);
     });
 
@@ -87,7 +101,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.error('Signup error:', error.message, error);
         
         // Handle specific error cases
-        if (error.message.includes('already registered') || error.message.includes('User already registered')) {
+        if (error.message.includes('already registered') || 
+            error.message.includes('User already registered') ||
+            error.message.includes('duplicate')) {
           throw new Error('An account with this email already exists. Please login instead.');
         }
         
@@ -97,20 +113,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Signup response:', data);
 
       // Check if this is a repeated signup (user already exists)
+      // When a user already exists, Supabase returns a user object but with empty identities array
       if (data.user && data.user.identities && data.user.identities.length === 0) {
-        console.log('User already exists (repeated signup detected)');
+        console.log('User already exists (repeated signup detected - empty identities)');
         throw new Error('An account with this email already exists. Please login instead.');
       }
 
-      // Create user profile in database if user was created
+      // Only create user profile if user was actually created (has identities)
       if (data.user && data.user.identities && data.user.identities.length > 0) {
-        console.log('New user created, now creating profile...');
+        console.log('New user created successfully, user ID:', data.user.id);
+        console.log('Creating user profile...');
+        
         try {
           await createUserProfile(data.user.id, normalizedEmail, displayName);
           console.log('User profile created successfully');
         } catch (profileError: any) {
           console.error('Error creating user profile:', profileError);
-          // Don't fail signup if profile creation fails
+          // Don't fail signup if profile creation fails - it will be created on first login
           console.warn('Profile creation failed but continuing with signup');
         }
       }
@@ -150,6 +169,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           throw new Error('Invalid email or password. Please check your credentials and try again.');
         } else if (error.message.includes('Email not confirmed')) {
           throw new Error('Please verify your email address before logging in. Check your inbox for the confirmation email.');
+        } else if (error.message.includes('not found')) {
+          throw new Error('No account found with this email. Please sign up first.');
         }
         
         throw error;
@@ -160,6 +181,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       console.log('Sign in successful:', data.user.email);
+      
+      // Ensure user profile exists (create if missing)
+      try {
+        await createUserProfile(
+          data.user.id, 
+          normalizedEmail, 
+          data.user.user_metadata?.display_name
+        );
+        console.log('User profile verified/created');
+      } catch (profileError) {
+        console.error('Error ensuring profile exists:', profileError);
+        // Don't fail login if profile creation fails
+      }
     } catch (error: any) {
       console.error('Sign in error:', error);
       throw error;

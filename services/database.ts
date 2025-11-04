@@ -197,21 +197,48 @@ export const createContactMessage = async (message: ContactMessage) => {
 // User Profiles
 export const createUserProfile = async (userId: string, email: string, displayName?: string) => {
   try {
-    console.log('Creating user profile in Supabase');
+    console.log('=== CREATE/UPDATE USER PROFILE ===');
+    console.log('User ID:', userId);
+    console.log('Email:', email);
+    console.log('Display Name:', displayName);
     
-    // First check if profile already exists
-    const { data: existingProfile } = await supabase
+    // First check if profile already exists for this user_id
+    const { data: existingProfile, error: fetchError } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('Error checking for existing profile:', fetchError);
+    }
 
     if (existingProfile) {
-      console.log('User profile already exists, skipping creation');
-      return existingProfile;
+      console.log('User profile already exists for this user_id, updating if needed');
+      
+      // Update the profile with latest info
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('user_profiles')
+        .update({
+          email,
+          display_name: displayName || existingProfile.display_name,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId)
+        .select()
+        .single();
+      
+      if (updateError) {
+        console.error('Error updating profile:', updateError);
+      } else {
+        console.log('Profile updated successfully');
+      }
+      
+      return updatedProfile || existingProfile;
     }
 
     // Create new profile
+    console.log('Creating new user profile...');
     const { data, error } = await supabase
       .from('user_profiles')
       .insert([
@@ -220,31 +247,41 @@ export const createUserProfile = async (userId: string, email: string, displayNa
           email,
           display_name: displayName,
           created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         },
       ])
       .select()
       .single();
 
     if (error) {
-      // Check if it's a duplicate key error
-      if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
+      console.error('Error creating user profile:', error);
+      
+      // Check if it's a duplicate key error (profile already exists)
+      if (error.code === '23505' || 
+          error.message?.includes('duplicate') || 
+          error.message?.includes('unique')) {
         console.log('Profile already exists (duplicate key), fetching existing profile');
+        
+        // Fetch the existing profile
         const { data: existingData } = await supabase
           .from('user_profiles')
           .select('*')
           .eq('user_id', userId)
           .single();
-        return existingData;
+        
+        if (existingData) {
+          console.log('Existing profile fetched successfully');
+          return existingData;
+        }
       }
       
-      console.error('Error creating user profile:', error);
       throw error;
     }
 
     console.log('User profile created successfully');
     return data;
   } catch (error) {
-    console.error('Failed to create user profile:', error);
+    console.error('Failed to create/update user profile:', error);
     throw error;
   }
 };
@@ -256,11 +293,16 @@ export const getUserProfile = async (userId: string) => {
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching user profile:', error);
       throw error;
+    }
+
+    if (!data) {
+      console.log('No profile found for user:', userId);
+      return null;
     }
 
     console.log('User profile fetched successfully');
