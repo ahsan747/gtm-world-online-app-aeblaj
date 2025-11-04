@@ -16,7 +16,6 @@ import {
   Image,
   Alert,
   Animated,
-  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
@@ -433,24 +432,29 @@ export default function CartScreen() {
                 </Text>
               </View>
               
-              <TouchableOpacity
-                onPress={() => {
-                  console.log("=== CHECKOUT BUTTON TAPPED ===");
-                  handleCheckout();
-                }}
-                activeOpacity={0.7}
-                style={[
+              <Pressable
+                onPress={handleCheckout}
+                style={({ pressed }) => [
                   styles.checkoutButton,
                   {
                     backgroundColor: colors.primary,
+                    opacity: pressed ? 0.85 : 1,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
                   },
                 ]}
               >
-                <Text style={styles.checkoutButtonText}>
-                  Checkout
-                </Text>
-                <IconSymbol name="arrow.right" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
+                <LinearGradient
+                  colors={[colors.primary, colors.primary + "DD"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.checkoutGradient}
+                >
+                  <Text style={styles.checkoutButtonText}>
+                    Checkout
+                  </Text>
+                  <IconSymbol name="arrow.right" size={20} color="#FFFFFF" />
+                </LinearGradient>
+              </Pressable>
             </View>
           </View>
         </View>
@@ -661,13 +665,8 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   checkoutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 28,
-    paddingVertical: 14,
     borderRadius: 16,
-    gap: 8,
+    overflow: "hidden",
     marginLeft: 12,
     minWidth: 140,
     ...Platform.select({
@@ -681,6 +680,14 @@ const styles = StyleSheet.create({
         elevation: 6,
       },
     }),
+  },
+  checkoutGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    gap: 8,
   },
   checkoutButtonText: {
     color: "#FFFFFF",
