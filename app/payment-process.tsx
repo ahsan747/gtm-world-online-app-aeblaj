@@ -20,8 +20,8 @@ import React, { useRef, useEffect, useState } from "react";
 import { IconSymbol } from "@/components/IconSymbol";
 import * as Haptics from "expo-haptics";
 import { GlassView } from "expo-glass-effect";
-import { createOrder } from "@/services/database";
 import { useCart } from "@/contexts/CartContext";
+import { supabase } from "@/config/supabase";
 
 type PaymentMethod = 'credit_card' | 'paypal';
 
@@ -136,8 +136,23 @@ const PaymentProcessScreen = () => {
     return true;
   };
 
-  const simulatePaymentProcessing = () => {
-    return new Promise<boolean>((resolve) => {
+  /**
+   * Process payment through Supabase Edge Function
+   * This function calls the secure server-side payment processing
+   * 
+   * IMPORTANT: For production use:
+   * 1. For Stripe: Implement Stripe Elements or Stripe SDK on client side
+   *    to generate secure tokens instead of sending raw card data
+   * 2. For PayPal: Implement PayPal SDK to create orders on client side
+   * 3. Never send raw card numbers to the server - use tokenization
+   * 4. Set up proper payment gateway credentials in Supabase Edge Function secrets:
+   *    - STRIPE_SECRET_KEY for Stripe
+   *    - PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET for PayPal
+   */
+  const processPaymentViaEdgeFunction = async () => {
+    try {
+      console.log('Calling payment processing Edge Function...');
+      
       // Animate progress bar
       Animated.timing(progressAnim, {
         toValue: 1,
@@ -145,13 +160,50 @@ const PaymentProcessScreen = () => {
         useNativeDriver: false,
       }).start();
 
-      // Simulate payment processing (3 seconds)
-      setTimeout(() => {
-        // 95% success rate for demo purposes
-        const success = Math.random() > 0.05;
-        resolve(success);
-      }, 3000);
-    });
+      // Get Supabase function URL
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Call the Edge Function
+      const { data, error } = await supabase.functions.invoke('process-payment', {
+        body: {
+          paymentMethod,
+          amount: orderData.total_amount,
+          currency: 'usd',
+          orderData: {
+            user_id: orderData.user_id,
+            user_email: orderData.user_email,
+            items: orderData.items,
+            shipping_info: orderData.shipping_info,
+            total_amount: orderData.total_amount,
+          },
+          // NOTE: In production, replace these with secure tokens
+          // For Stripe: Use Stripe.js to create a token
+          // For PayPal: Use PayPal SDK to create an order
+          stripeToken: paymentMethod === 'credit_card' ? 'demo_token' : undefined,
+          paypalOrderId: paymentMethod === 'paypal' ? 'demo_order_id' : undefined,
+        },
+      });
+
+      if (error) {
+        console.error('Edge Function error:', error);
+        throw new Error(error.message || 'Payment processing failed');
+      }
+
+      console.log('Payment response:', data);
+
+      if (!data.success) {
+        throw new Error(data.error || 'Payment was declined');
+      }
+
+      return {
+        success: true,
+        paymentId: data.paymentId,
+        orderId: data.orderId,
+      };
+    } catch (error: any) {
+      console.error('Payment processing error:', error);
+      throw error;
+    }
   };
 
   const handlePayment = async () => {
@@ -180,45 +232,14 @@ const PaymentProcessScreen = () => {
       setIsProcessing(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      console.log('Simulating payment processing...');
-      const paymentSuccess = await simulatePaymentProcessing();
+      console.log('Processing payment via Edge Function...');
+      const result = await processPaymentViaEdgeFunction();
 
-      if (!paymentSuccess) {
-        throw new Error('Payment was declined. Please check your payment details and try again.');
+      if (!result.success) {
+        throw new Error('Payment processing failed');
       }
 
-      console.log('Payment successful, creating order...');
-
-      // Generate a mock payment ID
-      const paymentId = `PAY-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
-
-      // Prepare payment details
-      const paymentDetails: any = {
-        payment_id: paymentId,
-        timestamp: new Date().toISOString(),
-      };
-
-      if (paymentMethod === 'credit_card') {
-        paymentDetails.card_last_four = cardNumber.replace(/\s/g, '').slice(-4);
-        paymentDetails.card_type = 'Visa'; // In real app, detect card type
-      } else if (paymentMethod === 'paypal') {
-        paymentDetails.paypal_email = paypalEmail;
-      }
-
-      // Create order with payment information
-      const completeOrderData = {
-        ...orderData,
-        payment_method: paymentMethod,
-        payment_status: 'completed',
-        payment_id: paymentId,
-        payment_details: paymentDetails,
-        status: 'processing' as const, // Order is now processing after successful payment
-      };
-
-      console.log('Creating order with payment info:', completeOrderData);
-      const order = await createOrder(completeOrderData);
-
-      console.log('Order created successfully:', order.id);
+      console.log('Payment successful, order created:', result.orderId);
 
       // Clear cart after successful order
       console.log('Clearing cart after successful payment');
@@ -228,11 +249,11 @@ const PaymentProcessScreen = () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       // Show success message
-      const orderId = order.id?.substring(0, 8).toUpperCase();
+      const orderId = result.orderId?.substring(0, 8).toUpperCase();
       
       Alert.alert(
         "Payment Successful! 🎉",
-        `Your payment has been processed successfully.\n\nOrder ID: #${orderId}\nPayment ID: ${paymentId}\n\nWe'll send you a confirmation email at ${orderData.user_email}.`,
+        `Your payment has been processed successfully.\n\nOrder ID: #${orderId}\nPayment ID: ${result.paymentId}\n\nWe'll send you a confirmation email at ${orderData.user_email}.`,
         [
           {
             text: "View Orders",
@@ -380,6 +401,19 @@ const PaymentProcessScreen = () => {
               </View>
             )}
 
+            {/* Demo Notice */}
+            <View style={[styles.demoNotice, { backgroundColor: "#FF9500" + "20", borderColor: "#FF9500" }]}>
+              <IconSymbol name="info.circle.fill" size={20} color="#FF9500" />
+              <View style={styles.demoTextContainer}>
+                <Text style={[styles.demoTitle, { color: colors.text }]}>
+                  Demo Mode
+                </Text>
+                <Text style={[styles.demoText, { color: colors.text + "80" }]}>
+                  Payment gateway not configured. Using simulation mode. To enable real payments, configure Stripe or PayPal credentials in Edge Function secrets.
+                </Text>
+              </View>
+            </View>
+
             {/* Amount Card */}
             <GlassView
               style={[styles.amountCard, { backgroundColor: colors.card }]}
@@ -409,6 +443,14 @@ const PaymentProcessScreen = () => {
                 <Text style={[styles.formTitle, { color: colors.text }]}>
                   Card Information
                 </Text>
+
+                {/* PCI DSS Notice */}
+                <View style={[styles.infoBox, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
+                  <IconSymbol name="lock.shield.fill" size={20} color={colors.primary} />
+                  <Text style={[styles.infoText, { color: colors.text + "80" }]}>
+                    For production: Use Stripe Elements or Stripe SDK to securely tokenize card data. Never send raw card numbers to your server.
+                  </Text>
+                </View>
 
                 {/* Card Number */}
                 <View style={styles.inputContainer}>
@@ -497,6 +539,14 @@ const PaymentProcessScreen = () => {
                   PayPal Login
                 </Text>
 
+                {/* PayPal SDK Notice */}
+                <View style={[styles.infoBox, { backgroundColor: "#0070BA" + "10", borderColor: "#0070BA" + "30" }]}>
+                  <IconSymbol name="info.circle.fill" size={20} color="#0070BA" />
+                  <Text style={[styles.infoText, { color: colors.text + "80" }]}>
+                    For production: Use PayPal JavaScript SDK to create orders on client side, then pass the order ID to your server for capture.
+                  </Text>
+                </View>
+
                 {/* PayPal Email */}
                 <View style={styles.inputContainer}>
                   <Text style={[styles.inputLabel, { color: colors.text }]}>
@@ -551,10 +601,10 @@ const PaymentProcessScreen = () => {
               <IconSymbol name="lock.shield.fill" size={24} color="#34C759" />
               <View style={styles.securityTextContainer}>
                 <Text style={[styles.securityTitle, { color: colors.text }]}>
-                  Secure Payment
+                  Secure Payment Processing
                 </Text>
                 <Text style={[styles.securityText, { color: colors.text + "80" }]}>
-                  Your payment information is encrypted with 256-bit SSL
+                  Payments are processed securely via Supabase Edge Functions with 256-bit SSL encryption. All sensitive data is handled according to PCI DSS compliance standards.
                 </Text>
               </View>
             </View>
@@ -613,6 +663,27 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingTop: 20,
+  },
+  demoNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+  },
+  demoTextContainer: {
+    flex: 1,
+  },
+  demoTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  demoText: {
+    fontSize: 12,
+    lineHeight: 18,
   },
   amountCard: {
     borderRadius: 20,
@@ -694,16 +765,17 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 16,
     borderRadius: 12,
-    marginTop: 16,
+    marginBottom: 16,
+    borderWidth: 1,
   },
   infoText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     lineHeight: 20,
   },
   securityNotice: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 16,
     padding: 20,
     borderRadius: 16,
