@@ -26,7 +26,12 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.gtmstore.app"
+      "package": "com.gtmstore.app",
+      "versionCode": 1,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "favicon": "./assets/images/final_quest_240x240.png",
@@ -42,7 +47,10 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
     }
   }
 }
