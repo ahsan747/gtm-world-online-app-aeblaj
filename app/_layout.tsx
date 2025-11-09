@@ -20,6 +20,11 @@ import * as SplashScreen from "expo-splash-screen";
 import { Button } from "@/components/button";
 import { StatusBar } from "expo-status-bar";
 
+// ✅ NEW: imports for Firebase + router tracking
+import { usePathname } from "expo-router";
+import analytics from "@react-native-firebase/analytics";
+
+
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
@@ -36,6 +41,21 @@ export default function RootLayout() {
 
   const { isConnected } = useNetworkState();
   const colorScheme = useColorScheme();
+  const pathname = usePathname(); // ✅ NEW: track current route path
+
+ useEffect(() => {
+  // once at app start
+  analytics().logAppOpen().catch(() => {});
+}, []);
+
+useEffect(() => {
+  // on every route change
+  if (pathname) {
+    analytics()
+      .logScreenView({ screen_name: pathname, screen_class: pathname })
+      .catch(() => {});
+  }
+}, [pathname]);
 
   if (!loaded) {
     return null;
