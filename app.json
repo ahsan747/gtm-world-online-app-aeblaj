@@ -39,7 +39,6 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-firebase-core",
       "expo-font",
       "expo-router",
       "expo-web-browser"
