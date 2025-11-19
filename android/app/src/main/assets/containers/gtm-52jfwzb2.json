@@ -1,0 +1,159 @@
+{
+    "exportFormatVersion": 2,
+    "exportTime": "2025-11-19 20:01:47",
+    "containerVersion": {
+        "path": "accounts/6324633323/containers/235566298/versions/0",
+        "accountId": "6324633323",
+        "containerId": "235566298",
+        "containerVersionId": "0",
+        "container": {
+            "path": "accounts/6324633323/containers/235566298",
+            "accountId": "6324633323",
+            "containerId": "235566298",
+            "name": "gtmstore - Android",
+            "publicId": "GTM-52JFWZB2",
+            "usageContext": [
+                "ANDROID_SDK_5"
+            ],
+            "fingerprint": "1763570825969",
+            "tagManagerUrl": "https://tagmanager.google.com/#/container/accounts/6324633323/containers/235566298/workspaces?apiLink=container",
+            "features": {
+                "supportUserPermissions": true,
+                "supportEnvironments": true,
+                "supportWorkspaces": true,
+                "supportGtagConfigs": false,
+                "supportBuiltInVariables": true,
+                "supportClients": false,
+                "supportFolders": true,
+                "supportTags": true,
+                "supportTemplates": true,
+                "supportTriggers": true,
+                "supportVariables": true,
+                "supportVersions": true,
+                "supportZones": true,
+                "supportTransformations": false
+            },
+            "tagIds": [
+                "GTM-52JFWZB2"
+            ]
+        },
+        "tag": [
+            {
+                "accountId": "6324633323",
+                "containerId": "235566298",
+                "tagId": "3",
+                "name": "GA4 - homepage",
+                "type": "fm",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "overrideEventName",
+                        "value": "screen_view"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "action",
+                        "value": "filter"
+                    }
+                ],
+                "fingerprint": "1763581814379",
+                "firingTriggerId": [
+                    "2147479556"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "consentSettings": {
+                    "consentStatus": "NOT_SET"
+                }
+            },
+            {
+                "accountId": "6324633323",
+                "containerId": "235566298",
+                "tagId": "5",
+                "name": "GA4 - cl",
+                "type": "fm",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "overrideEventName",
+                        "value": "add_to_cart"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "action",
+                        "value": "filter"
+                    }
+                ],
+                "fingerprint": "1763582484922",
+                "firingTriggerId": [
+                    "4"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "paused": true,
+                "consentSettings": {
+                    "consentStatus": "NOT_SET"
+                }
+            }
+        ],
+        "trigger": [
+            {
+                "accountId": "6324633323",
+                "containerId": "235566298",
+                "triggerId": "4",
+                "name": "CL - myapp",
+                "type": "WINDOW_LOADED",
+                "filter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{App Name}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "mya"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1763581771514"
+            }
+        ],
+        "builtInVariable": [
+            {
+                "accountId": "6324633323",
+                "containerId": "235566298",
+                "type": "APP_ID",
+                "name": "App ID"
+            },
+            {
+                "accountId": "6324633323",
+                "containerId": "235566298",
+                "type": "APP_NAME",
+                "name": "App Name"
+            },
+            {
+                "accountId": "6324633323",
+                "containerId": "235566298",
+                "type": "APP_VERSION_CODE",
+                "name": "App Version Code"
+            },
+            {
+                "accountId": "6324633323",
+                "containerId": "235566298",
+                "type": "APP_VERSION_NAME",
+                "name": "App Version Name"
+            },
+            {
+                "accountId": "6324633323",
+                "containerId": "235566298",
+                "type": "EVENT_NAME",
+                "name": "Event Name"
+            }
+        ],
+        "fingerprint": "1763582507001",
+        "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/6324633323/containers/235566298/versions/0?apiLink=version"
+    }
+}

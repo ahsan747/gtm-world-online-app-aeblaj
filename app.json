@@ -41,7 +41,13 @@
     "plugins": [
       "expo-font",
       "expo-router",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "./plugins/withGtm",
+        {
+          "androidContainerPath": "./assets/gtm-52JFWZB2.json"
+        }
+      ]
     ],
     "scheme": "gtmstore",
     "experiments": {
