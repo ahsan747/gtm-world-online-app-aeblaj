@@ -45,7 +45,7 @@
       [
         "./plugins/withGtm",
         {
-          "androidContainerPath": "./assets/gtm-52JFWZB2.json"
+          "androidContainerPath": "./assets/GTM-52JFWZB2.json"
         }
       ]
     ],
