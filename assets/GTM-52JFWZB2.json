@@ -1,11 +1,12 @@
 {
     "exportFormatVersion": 2,
-    "exportTime": "2025-11-19 22:25:43",
+    "exportTime": "2026-01-15 17:49:42",
     "containerVersion": {
-        "path": "accounts/6324633323/containers/235566298/versions/0",
+        "path": "accounts/6324633323/containers/235566298/versions/4",
         "accountId": "6324633323",
         "containerId": "235566298",
-        "containerVersionId": "0",
+        "containerVersionId": "4",
+        "name": "custom dimensions bei screen_view event angelegt",
         "container": {
             "path": "accounts/6324633323/containers/235566298",
             "accountId": "6324633323",
@@ -92,6 +93,69 @@
                 "consentSettings": {
                     "consentStatus": "NOT_SET"
                 }
+            },
+            {
+                "accountId": "6324633323",
+                "containerId": "235566298",
+                "tagId": "6",
+                "name": "GA4 Event - screen_view",
+                "type": "fm",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "overrideEventName",
+                        "value": "screen_view"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "editParamTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "editParamKey",
+                                        "value": "F118165"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "editParamValue",
+                                        "value": "test"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "editParamKey",
+                                        "value": "F118175"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "editParamValue",
+                                        "value": "test2"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "action",
+                        "value": "filter"
+                    }
+                ],
+                "fingerprint": "1768493678295",
+                "firingTriggerId": [
+                    "2147479556"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "consentSettings": {
+                    "consentStatus": "NOT_SET"
+                }
             }
         ],
         "trigger": [
@@ -153,7 +217,7 @@
                 "name": "Event Name"
             }
         ],
-        "fingerprint": "1763591143507",
-        "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/6324633323/containers/235566298/versions/0?apiLink=version"
+        "fingerprint": "1768493696307",
+        "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/6324633323/containers/235566298/versions/4?apiLink=version"
     }
 }
