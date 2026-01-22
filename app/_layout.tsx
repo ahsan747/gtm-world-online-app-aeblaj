@@ -41,7 +41,7 @@ export default function RootLayout() {
 
   const { isConnected } = useNetworkState();
   const colorScheme = useColorScheme();
-  const pathname = usePathname(); // ✅ NEW: track current route path
+  const pathname = usePathname(); // 
 
  useEffect(() => {
   // once at app start

@@ -1,4 +1,3 @@
-
 import { GlassView } from "expo-glass-effect";
 import { Product } from "@/types/Product";
 import {
@@ -23,6 +22,9 @@ import { products, categories } from "@/data/products";
 import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import * as Haptics from "expo-haptics";
+import analytics from '@react-native-firebase/analytics';
+
+
 
 // Category Item Component
 const CategoryItem = ({ category, index, selectedCategory, onSelect, colors }: any) => {
@@ -209,8 +211,10 @@ const ProductCard = ({ product, index, onAddToCart, colors, router }: any) => {
 };
 
 export default function HomeScreen() {
+
   const { user } = useAuth();
   const { colors } = useTheme();
+
   const { addToCart, getCartItemCount } = useCart();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
