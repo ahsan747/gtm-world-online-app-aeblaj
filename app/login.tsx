@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/IconSymbol';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@react-navigation/native';
+import analytics from '@react-native-firebase/analytics';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');

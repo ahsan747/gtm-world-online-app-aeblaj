@@ -46,6 +46,11 @@ export default function RootLayout() {
  useEffect(() => {
   // once at app start
   analytics().logAppOpen().catch(() => {});
+
+  analytics()
+    .setUserId("test_user_999")
+    .then(() => console.log("✅ TEST USER ID SET: test_user_999"))
+    .catch((error) => console.error("Error setting Test User ID:", error));
 }, []);
 
 useEffect(() => {
