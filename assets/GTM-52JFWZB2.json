@@ -1,11 +1,11 @@
 {
     "exportFormatVersion": 2,
-    "exportTime": "2026-03-12 22:46:57",
+    "exportTime": "2026-03-13 23:18:00",
     "containerVersion": {
-        "path": "accounts/6324633323/containers/235566298/versions/5",
+        "path": "accounts/6324633323/containers/235566298/versions/8",
         "accountId": "6324633323",
         "containerId": "235566298",
-        "containerVersionId": "5",
+        "containerVersionId": "8",
         "container": {
             "path": "accounts/6324633323/containers/235566298",
             "accountId": "6324633323",
@@ -46,9 +46,25 @@
                 "type": "fm",
                 "parameter": [
                     {
-                        "type": "TEMPLATE",
-                        "key": "overrideEventName",
-                        "value": "screen_view_test"
+                        "type": "LIST",
+                        "key": "editParamTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "editParamKey",
+                                        "value": "gtm_version"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "editParamValue",
+                                        "value": "{{App Version Name}}"
+                                    }
+                                ]
+                            }
+                        ]
                     },
                     {
                         "type": "TEMPLATE",
@@ -56,7 +72,7 @@
                         "value": "filter"
                     }
                 ],
-                "fingerprint": "1763588744170",
+                "fingerprint": "1773443757494",
                 "firingTriggerId": [
                     "2147479556"
                 ],
@@ -111,11 +127,12 @@
                         "value": "filter"
                     }
                 ],
-                "fingerprint": "1773355596098",
+                "fingerprint": "1773443486886",
                 "firingTriggerId": [
                     "2147479556"
                 ],
                 "tagFiringOption": "ONCE_PER_EVENT",
+                "paused": true,
                 "consentSettings": {
                     "consentStatus": "NOT_SET"
                 }
@@ -180,7 +197,7 @@
                 "name": "Event Name"
             }
         ],
-        "fingerprint": "1773355603226",
-        "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/6324633323/containers/235566298/versions/5?apiLink=version"
+        "fingerprint": "1773443762739",
+        "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/6324633323/containers/235566298/versions/8?apiLink=version"
     }
 }
