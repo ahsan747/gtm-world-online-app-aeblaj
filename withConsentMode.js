@@ -1,35 +1,41 @@
-const { withAndroidManifest } = require('@expo/config-plugins');
-
-// Helper function to safely add or update meta-data without duplicating
-function setMetaData(app, name, value) {
-  const existingIndex = app['meta-data'].findIndex(
-    (item) => item.$['android:name'] === name
-  );
-
-  if (existingIndex > -1) {
-    app['meta-data'][existingIndex].$['android:value'] = value;
-  } else {
-    app['meta-data'].push({
-      $: {
-        'android:name': name,
-        'android:value': value,
-      },
-    });
-  }
-}
+const { withAndroidManifest, AndroidConfig } = require('@expo/config-plugins');
 
 module.exports = function withConsentMode(config) {
-  return withAndroidManifest(config, async (config) => {
-    const app = config.modResults.manifest.application[0];
+  return withAndroidManifest(config, (config) => {
+    const androidManifest = config.modResults.manifest;
     
-    // Ensure the meta-data array exists
-    app['meta-data'] = app['meta-data'] || [];
+    // 1. Ensure the 'tools' namespace exists on the root <manifest> tag
+    if (!androidManifest.$['xmlns:tools']) {
+      androidManifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
+    }
 
-    // Safely inject the default denied states
-    setMetaData(app, 'google_analytics_default_allow_analytics_storage', 'false');
-    setMetaData(app, 'google_analytics_default_allow_ad_storage', 'false');
-    setMetaData(app, 'google_analytics_default_allow_ad_user_data', 'false');
-    setMetaData(app, 'google_analytics_default_allow_ad_personalization_signals', 'false');
+    const mainApplication = AndroidConfig.Manifest.getMainApplicationOrThrow(androidManifest);
+    
+    const consentSettings = [
+      'google_analytics_default_allow_analytics_storage',
+      'google_analytics_default_allow_ad_storage',
+      'google_analytics_default_allow_ad_user_data',
+      'google_analytics_default_allow_ad_personalization_signals',
+    ];
+
+    // Ensure the meta-data array exists
+    mainApplication['meta-data'] = mainApplication['meta-data'] || [];
+
+    consentSettings.forEach((name) => {
+      // Remove any existing entry for this name to prevent duplicates
+      mainApplication['meta-data'] = mainApplication['meta-data'].filter(
+        (item) => item.$['android:name'] !== name
+      );
+
+      // Add the new entry with the 'tools:replace' attribute to override the library default
+      mainApplication['meta-data'].push({
+        $: {
+          'android:name': name,
+          'android:value': 'false',
+          'tools:replace': 'android:value', // THIS IS THE FIX
+        },
+      });
+    });
 
     return config;
   });
