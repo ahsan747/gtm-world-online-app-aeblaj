@@ -62,6 +62,25 @@ useEffect(() => {
   }
 }, [pathname]);
 
+// ✅ NEW: 5-second simulated consent timer!
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      try {
+        await analytics().setConsent({
+          analytics_storage: true,
+          ad_storage: true,
+          ad_user_data: true,
+          ad_personalization: true,
+        });
+        console.log("✅ SIMULATED: User clicked Accept! Consent is now GRANTED.");
+      } catch (error) {
+        console.error("Error setting consent:", error);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   if (!loaded) {
     return null;
   }
