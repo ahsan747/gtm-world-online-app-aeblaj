@@ -1,11 +1,11 @@
 {
     "exportFormatVersion": 2,
-    "exportTime": "2026-03-13 23:18:00",
+    "exportTime": "2026-03-14 23:32:20",
     "containerVersion": {
-        "path": "accounts/6324633323/containers/235566298/versions/8",
+        "path": "accounts/6324633323/containers/235566298/versions/12",
         "accountId": "6324633323",
         "containerId": "235566298",
-        "containerVersionId": "8",
+        "containerVersionId": "12",
         "container": {
             "path": "accounts/6324633323/containers/235566298",
             "accountId": "6324633323",
@@ -46,25 +46,9 @@
                 "type": "fm",
                 "parameter": [
                     {
-                        "type": "LIST",
-                        "key": "editParamTable",
-                        "list": [
-                            {
-                                "type": "MAP",
-                                "map": [
-                                    {
-                                        "type": "TEMPLATE",
-                                        "key": "editParamKey",
-                                        "value": "gtm_version"
-                                    },
-                                    {
-                                        "type": "TEMPLATE",
-                                        "key": "editParamValue",
-                                        "value": "{{App Version Name}}"
-                                    }
-                                ]
-                            }
-                        ]
+                        "type": "TEMPLATE",
+                        "key": "overrideEventName",
+                        "value": "screen_view_test"
                     },
                     {
                         "type": "TEMPLATE",
@@ -72,67 +56,11 @@
                         "value": "filter"
                     }
                 ],
-                "fingerprint": "1773443757494",
+                "fingerprint": "1773531090396",
                 "firingTriggerId": [
                     "2147479556"
                 ],
                 "tagFiringOption": "ONCE_PER_EVENT",
-                "consentSettings": {
-                    "consentStatus": "NOT_SET"
-                }
-            },
-            {
-                "accountId": "6324633323",
-                "containerId": "235566298",
-                "tagId": "5",
-                "name": "GA4 - cl",
-                "type": "fm",
-                "parameter": [
-                    {
-                        "type": "TEMPLATE",
-                        "key": "overrideEventName",
-                        "value": "add_to_cart"
-                    },
-                    {
-                        "type": "TEMPLATE",
-                        "key": "action",
-                        "value": "filter"
-                    }
-                ],
-                "fingerprint": "1763582484922",
-                "firingTriggerId": [
-                    "4"
-                ],
-                "tagFiringOption": "ONCE_PER_EVENT",
-                "paused": true,
-                "consentSettings": {
-                    "consentStatus": "NOT_SET"
-                }
-            },
-            {
-                "accountId": "6324633323",
-                "containerId": "235566298",
-                "tagId": "6",
-                "name": "GA4 Event - screen_view",
-                "type": "fm",
-                "parameter": [
-                    {
-                        "type": "TEMPLATE",
-                        "key": "overrideEventName",
-                        "value": "screen_view"
-                    },
-                    {
-                        "type": "TEMPLATE",
-                        "key": "action",
-                        "value": "filter"
-                    }
-                ],
-                "fingerprint": "1773443486886",
-                "firingTriggerId": [
-                    "2147479556"
-                ],
-                "tagFiringOption": "ONCE_PER_EVENT",
-                "paused": true,
                 "consentSettings": {
                     "consentStatus": "NOT_SET"
                 }
@@ -142,9 +70,9 @@
             {
                 "accountId": "6324633323",
                 "containerId": "235566298",
-                "triggerId": "4",
-                "name": "CL - myapp",
-                "type": "WINDOW_LOADED",
+                "triggerId": "7",
+                "name": "Event - Screen View Test",
+                "type": "ALWAYS",
                 "filter": [
                     {
                         "type": "EQUALS",
@@ -152,17 +80,17 @@
                             {
                                 "type": "TEMPLATE",
                                 "key": "arg0",
-                                "value": "{{App Name}}"
+                                "value": "{{Event Name}}"
                             },
                             {
                                 "type": "TEMPLATE",
                                 "key": "arg1",
-                                "value": "mya"
+                                "value": "screen_view"
                             }
                         ]
                     }
                 ],
-                "fingerprint": "1763581771514"
+                "fingerprint": "1773528420848"
             }
         ],
         "builtInVariable": [
@@ -197,7 +125,7 @@
                 "name": "Event Name"
             }
         ],
-        "fingerprint": "1773443762739",
-        "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/6324633323/containers/235566298/versions/8?apiLink=version"
+        "fingerprint": "1773531131835",
+        "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/6324633323/containers/235566298/versions/12?apiLink=version"
     }
 }

@@ -43,19 +43,29 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const pathname = usePathname(); // 
 
- useEffect(() => {
-  // once at app start
-  analytics().logAppOpen().catch(() => {});
+useEffect(() => {
+  const identifyUser = async () => {
+    try {
+      // 1. Set the Unique ID
+      await analytics().setUserId("test_user_999");
 
-  analytics()
-    .setUserId("test_user_999")
-    .then(() => console.log("✅ TEST USER ID SET: test_user_999"))
-    .catch((error) => console.error("Error setting Test User ID:", error));
+      // 2. Set the User Property (The "Sticky" property)
+      await analytics().setUserProperty("user_type", "registered");
+
+      console.log("✅ Identity Sync: User ID and User Type are set.");
+    } catch (error) {
+      console.error("Identity Error:", error);
+    }
+  };
+
+  identifyUser();
 }, []);
 
 useEffect(() => {
   // on every route change
   if (pathname) {
+    console.log("🚀 TRIGGERING SCREEN VIEW FOR:", pathname); // Add this line
+    analytics().logScreenView({ screen_name: pathname, screen_class: pathname });
     analytics()
       .logScreenView({ screen_name: pathname, screen_class: pathname })
       .catch(() => {});
