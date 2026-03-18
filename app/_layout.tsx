@@ -46,15 +46,30 @@ export default function RootLayout() {
 useEffect(() => {
   const identifyUser = async () => {
     try {
-      // 1. Set the Unique ID
-      await analytics().setUserId("test_user_999");
-
-      // 2. Set the User Property (The "Sticky" property)
+      // --- Step 1: Initial "Logged In" State ---
+      console.log("⏳ Starting Phase 1: Logged In...");
+      await analytics().setUserId("12456789123");
       await analytics().setUserProperty("user_type", "registered");
+      
+      // Fire an event to stamp these properties
+      await analytics().logEvent("test_mid_session_start");
+      console.log("✅ Phase 1 Complete.");
 
-      console.log("✅ Identity Sync: User ID and User Type are set.");
+      // --- Step 2: Pause for 10 seconds ---
+      console.log("⏳ Waiting 10 seconds...");
+      await new Promise(resolve => setTimeout(resolve, 300000));
+
+      // --- Step 3: Mid-Session Change ("Logged Out" State) ---
+      console.log("⏳ Starting Phase 2: Logged Out...");
+      await analytics().setUserId(null); // Clears the ID
+      await analytics().setUserProperty("user_type", "anonymous");
+
+      // Fire another event to see the new properties attached
+      await analytics().logEvent("test_mid_session_end");
+      console.log("✅ Phase 2 Complete.");
+
     } catch (error) {
-      console.error("Identity Error:", error);
+      console.error("Identity Simulation Error:", error);
     }
   };
 
